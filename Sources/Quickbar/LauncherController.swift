@@ -250,7 +250,9 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         lastText = text
 
         // Space after an abbreviation that selected a search template starts typing its query.
-        if mode == .root, text == previous + " ", !previous.isEmpty, !previous.contains(" "),
+        // After the retype delay the abbreviation is selected, so Space replaces it
+        // and the field holds just " "; that must count too.
+        if mode == .root, text == previous + " " || text == " ", !previous.isEmpty, !previous.contains(" "),
            let item = selectedItem, item.kind == .searchTemplate,
            let template = item.payload.flatMap(ConfigStore.shared.config.template(withID:)) {
             learn(item, query: previous)
