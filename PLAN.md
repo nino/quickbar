@@ -42,6 +42,11 @@ Sources/Quickbar       the app
 
 ## Stages
 
+Status (2026-11-13): stages 1–8 are built. Verified live: hotkey, search, launch,
+retype select-all, math, clipboard cycling, Settings opens. Not yet exercised by
+hand: the individual Settings controls, launch at login, FSEvents rescans.
+Stage 9 (install to /Applications) is waiting on Nino.
+
 | # | Stage | Done when |
 |---|-------|-----------|
 | 1 | Repo, package, build script, docs | `swift build` and `scripts/build-app.sh` work |
@@ -60,3 +65,6 @@ Sources/Quickbar       the app
 - System Settings panes, contacts, bookmarks in the index
 - Matched-character highlighting
 - Main-thread stall watchdog
+- Search is ~0.8 ms for one-letter queries on 3k items; nearly all of it is in
+  `Fuzzy.score`. If the index grows past ~30k items, profile that loop first.
+- LaunchBar also registers ⌘\\ for its clipboard history; while both run, both react.

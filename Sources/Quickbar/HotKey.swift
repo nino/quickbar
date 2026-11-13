@@ -53,7 +53,7 @@ final class HotKeyCenter {
             spec.keyCode, Self.carbonModifiers(spec.modifiers),
             EventHotKeyID(signature: signature, id: id), GetEventDispatcherTarget(), 0, &ref)
         guard status == noErr, let ref else {
-            NSLog("Quickbar: could not register hotkey \(spec.displayString) (status \(status))")
+            Log.info("could not register hotkey \(spec.displayString) (status \(status))")
             return false
         }
         refs[id] = ref

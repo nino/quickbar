@@ -516,7 +516,7 @@ enum Opener {
     static func open(_ url: URL) {
         queue.async {
             NSWorkspace.shared.open(url, configuration: NSWorkspace.OpenConfiguration()) { _, error in
-                if let error { NSLog("Quickbar: could not open \(url): \(error.localizedDescription)") }
+                if let error { Log.info("could not open \(url): \(error.localizedDescription)") }
             }
         }
     }

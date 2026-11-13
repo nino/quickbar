@@ -61,6 +61,14 @@ What the harness cannot check: global hotkeys, focus, the retype timer's
 select-all, the clipboard panel's modifier-release commit, and the Settings
 window. Check those in the running app.
 
+## Logs
+
+`~/Library/Logs/Quickbar.log`. `Log.info` always writes; `Log.debug` only when
+launched with `open --env QUICKBAR_DEBUG=1 build/Quickbar.app`. The live app can
+be driven with `osascript` + System Events key codes and checked through the
+log, the pasteboard and the files in Application Support. Do not use
+`screencapture`: it raises a screen-recording prompt on Nino's machine.
+
 ## Conventions
 
 - Swift 5 language mode (see `Package.swift`); AppKit for the bar, SwiftUI only

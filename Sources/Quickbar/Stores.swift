@@ -27,7 +27,7 @@ enum Disk {
                     try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
                 }
             } catch {
-                NSLog("Quickbar: failed to write \(url.lastPathComponent): \(error)")
+                Log.info("failed to write \(url.lastPathComponent): \(error)")
             }
         }
     }
@@ -84,7 +84,7 @@ final class ConfigStore: ObservableObject {
     func reload() {
         Disk.queue.async {
             guard let data = try? Data(contentsOf: AppPaths.config), let loaded = Config.decode(data) else {
-                NSLog("Quickbar: config.json is missing or invalid; keeping current settings")
+                Log.info("config.json is missing or invalid; keeping current settings")
                 return
             }
             DispatchQueue.main.async {

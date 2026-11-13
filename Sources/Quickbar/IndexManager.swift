@@ -77,7 +77,7 @@ final class IndexManager {
         }
         publish(items)
         let ms = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1e6
-        NSLog("Quickbar: indexed \(items.count) items in \(String(format: "%.0f", ms)) ms")
+        Log.info("indexed \(items.count) items in \(String(format: "%.0f", ms)) ms")
     }
 
     // MARK: - FSEvents

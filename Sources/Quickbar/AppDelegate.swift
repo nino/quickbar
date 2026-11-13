@@ -95,7 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "clipboard": clipboardPanel.hotKeyPressed(reverse: false, modifiers: [])
         case "clear-clipboard": ClipboardStore.shared.clear()
         case "quit": NSApp.terminate(nil)
-        default: NSLog("Quickbar: unknown action \(action)")
+        default: Log.info("unknown action \(action)")
         }
     }
 

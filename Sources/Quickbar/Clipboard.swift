@@ -163,6 +163,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
     func hotKeyPressed(reverse: Bool, modifiers: NSEvent.ModifierFlags) {
         if panel.isVisible {
             move(by: reverse ? -1 : 1, wrap: true)
+            Log.debug("clipboard: hotkey while open, row \(table.selectedRow)")
             return
         }
         entries = ClipboardStore.shared.entries
@@ -178,6 +179,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
         panel.position(height: rows * Self.rowHeight + 12 + 1 + Self.previewHeight)
         panel.makeKeyAndOrderFront(nil)
         shownAt = Date()
+        Log.debug("clipboard: shown with \(entries.count) entries, row \(table.selectedRow), key=\(panel.isKeyWindow)")
         startWatching(modifiers.subtracting(.shift))
     }
 
@@ -200,6 +202,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
         } else if Date().timeIntervalSince(shownAt) > 0.25 {
             // The hotkey was tapped and released before we looked: stay open
             // and let Enter / Escape decide.
+            Log.debug("clipboard: modifiers never seen held, staying open")
             modifierTimer?.invalidate()
         }
     }
@@ -223,6 +226,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
     }
 
     private func commit() {
+        Log.debug("clipboard: commit row \(table.selectedRow)")
         if entries.indices.contains(table.selectedRow) {
             ClipboardStore.shared.activate(entries[table.selectedRow])
         }
@@ -236,6 +240,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
     }
 
     func windowDidResignKey(_ notification: Notification) {
+        Log.debug("clipboard: resigned key")
         hide()
     }
 
