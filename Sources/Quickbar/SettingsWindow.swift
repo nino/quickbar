@@ -7,30 +7,73 @@ final class SettingsWindowController {
     static let shared = SettingsWindowController()
     private var window: NSWindow?
 
-    func show() {
-        if window == nil {
-            let hosting = NSHostingController(rootView: SettingsView().environmentObject(ConfigStore.shared))
-            let w = NSWindow(contentViewController: hosting)
-            w.title = "Quickbar Settings"
-            w.styleMask = [.titled, .closable, .miniaturizable]
-            w.isReleasedWhenClosed = false
-            w.center()
-            window = w
+    /// Standard macOS preferences: a toolbar of panes, the window sized to each.
+    func makeWindow() -> NSWindow {
+        let tabs = SettingsTabController()
+        tabs.tabStyle = .toolbar
+        func add<V: View>(_ title: String, _ symbol: String, height: CGFloat, _ view: V) {
+            let size = NSSize(width: SettingsLayout.width, height: height)
+            let host = NSHostingController(rootView: view
+                .frame(width: size.width, height: size.height)
+                .environmentObject(ConfigStore.shared))
+            host.preferredContentSize = size
+            host.title = title
+            let item = NSTabViewItem(viewController: host)
+            item.label = title
+            item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+            tabs.addTabViewItem(item)
         }
+        add("General", "gearshape", height: 590, GeneralTab())
+        add("Index", "folder", height: 540, FoldersTab())
+        add("Abbreviations", "character.cursor.ibeam", height: 460, AbbreviationsTab())
+        add("Search", "magnifyingglass", height: 460, SearchTab())
+
+        let w = NSWindow(contentViewController: tabs)
+        w.title = "General"
+        w.styleMask = [.titled, .closable, .miniaturizable]
+        w.toolbarStyle = .preference
+        w.isReleasedWhenClosed = false
+        w.center()
+        return w
+    }
+
+    func show() {
+        if window == nil { window = makeWindow() }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
 }
 
-private struct SettingsView: View {
+/// Explanatory text under a section, left-aligned (the default trails).
+private struct Footnote: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+
     var body: some View {
-        TabView {
-            GeneralTab().tabItem { Label("General", systemImage: "gearshape") }
-            FoldersTab().tabItem { Label("Index", systemImage: "folder") }
-            AbbreviationsTab().tabItem { Label("Abbreviations", systemImage: "character.cursor.ibeam") }
-            SearchTab().tabItem { Label("Search", systemImage: "magnifyingglass") }
-        }
-        .frame(width: 640, height: 480)
+        Text(text)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+enum SettingsLayout {
+    static let width: CGFloat = 560
+    static let controlWidth: CGFloat = 170
+}
+
+/// Resizes the window to the selected pane, keeping its top edge in place.
+final class SettingsTabController: NSTabViewController {
+    override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
+        super.tabView(tabView, didSelect: tabViewItem)
+        guard let window = view.window, let item = tabViewItem,
+              let size = item.viewController?.preferredContentSize, size.height > 0
+        else { return }
+        window.title = item.label
+        let target = window.frameRect(forContentRect: NSRect(origin: .zero, size: size)).size
+        var frame = window.frame
+        frame.origin.y += frame.height - target.height
+        frame.size = target
+        window.setFrame(frame, display: true, animate: window.isVisible)
     }
 }
 
@@ -41,32 +84,54 @@ private struct GeneralTab: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginError: String?
 
+    /// The slider moves freely (a stepped slider draws a row of tick marks);
+    /// the value is rounded to tenths on the way in.
+    private var retypeDelay: Binding<Double> {
+        Binding(get: { store.config.retypeDelay },
+                set: { store.config.retypeDelay = ($0 * 10).rounded() / 10 })
+    }
+
     var body: some View {
         Form {
-            Section("Hotkeys") {
-                LabeledContent("Show Quickbar") { HotKeyRecorder(spec: $store.config.hotKey) }
-                LabeledContent("Clipboard history") { HotKeyRecorder(spec: $store.config.clipboardHotKey) }
-                Text("Add Shift to the clipboard hotkey to cycle backwards.")
-                    .font(.caption).foregroundStyle(.secondary)
+            Section {
+                LabeledContent("Show Quickbar") {
+                    HotKeyRecorder(spec: $store.config.hotKey).frame(width: SettingsLayout.controlWidth)
+                }
+                LabeledContent("Clipboard history") {
+                    HotKeyRecorder(spec: $store.config.clipboardHotKey).frame(width: SettingsLayout.controlWidth)
+                }
+            } header: {
+                Text("Hotkeys")
+            } footer: {
+                Footnote("Click a shortcut, then press the new one. Shift steps backwards through the clipboard.")
             }
-            Section("Typing") {
-                LabeledContent("Retype delay") {
-                    HStack {
-                        Slider(value: $store.config.retypeDelay, in: 0.3...3.0, step: 0.1)
+            Section {
+                LabeledContent("Start over after a pause of") {
+                    HStack(spacing: 8) {
+                        Slider(value: retypeDelay, in: 0.3...3.0).frame(width: SettingsLayout.controlWidth - 52)
                         Text(String(format: "%.1f s", store.config.retypeDelay))
                             .monospacedDigit().frame(width: 44, alignment: .trailing)
                     }
                 }
-                Text("After this long without typing, the next key starts a new abbreviation.")
-                    .font(.caption).foregroundStyle(.secondary)
+            } header: {
+                Text("Typing")
+            } footer: {
+                Footnote("After this pause, the next key starts a new abbreviation.")
             }
             Section("Clipboard") {
-                Stepper("Keep \(store.config.clipboardMaxEntries) entries",
-                        value: $store.config.clipboardMaxEntries, in: 10...1000, step: 10)
+                LabeledContent("Entries to keep") {
+                    HStack(spacing: 6) {
+                        Text("\(store.config.clipboardMaxEntries)").monospacedDigit()
+                        Stepper("Entries to keep", value: $store.config.clipboardMaxEntries, in: 10...1000, step: 10)
+                            .labelsHidden()
+                    }
+                }
                 Toggle("Remember history across restarts", isOn: $store.config.clipboardPersist)
-                Button("Clear History") { ClipboardStore.shared.clear() }
+                LabeledContent("History") {
+                    Button("Clear…") { confirmClear() }
+                }
             }
-            Section("Startup") {
+            Section {
                 Toggle("Launch at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, enabled in
                         do {
@@ -76,12 +141,25 @@ private struct GeneralTab: View {
                             loginError = error.localizedDescription
                         }
                     }
+            } header: {
+                Text("Startup")
+            } footer: {
                 if let loginError {
-                    Text(loginError).font(.caption).foregroundStyle(.red)
+                    Footnote(loginError).foregroundStyle(.red)
                 }
             }
         }
         .formStyle(.grouped)
+        .scrollDisabled(true)
+    }
+
+    private func confirmClear() {
+        let alert = NSAlert()
+        alert.messageText = "Clear the clipboard history?"
+        alert.informativeText = "All remembered entries are removed. This cannot be undone."
+        alert.addButton(withTitle: "Clear")
+        alert.addButton(withTitle: "Cancel")
+        if alert.runModal() == .alertFirstButtonReturn { ClipboardStore.shared.clear() }
     }
 }
 
@@ -172,9 +250,11 @@ private struct FoldersTab: View {
                 ForEach($store.config.folders) { $folder in
                     HStack {
                         Image(systemName: "folder")
-                        Text(folder.path).lineLimit(1).truncationMode(.middle)
+                        Text(folder.path).lineLimit(1).truncationMode(.middle).layoutPriority(1)
                         Spacer()
-                        Stepper("Depth \(folder.depth)", value: $folder.depth, in: 1...6).fixedSize()
+                        Text(folder.depth == 1 ? "1 level" : "\(folder.depth) levels")
+                            .monospacedDigit().foregroundStyle(.secondary)
+                        Stepper("Depth", value: $folder.depth, in: 1...6).labelsHidden()
                         Button(role: .destructive) {
                             store.config.folders.removeAll { $0.path == folder.path }
                         } label: { Image(systemName: "minus.circle") }
@@ -185,7 +265,7 @@ private struct FoldersTab: View {
             } header: {
                 Text("Indexed folders")
             } footer: {
-                Text("Depth is how many levels below the folder are searchable. You can still walk deeper with the arrow keys.")
+                Footnote("Levels are how deep below each folder items are searchable. The arrow keys still reach deeper.")
             }
             Section {
                 TextField("Skip names", text: Binding(
@@ -197,7 +277,7 @@ private struct FoldersTab: View {
             } header: {
                 Text("Details")
             } footer: {
-                Text("Applications are indexed from: \(store.config.applicationFolders.joined(separator: ", ")). Edit config.json to change that list.")
+                Footnote("Applications are indexed from: \(store.config.applicationFolders.joined(separator: ", ")). Edit config.json to change that list.")
             }
         }
         .formStyle(.grouped)
@@ -248,14 +328,15 @@ private struct AbbreviationsTab: View {
                     }
                 }
                 HStack {
-                    TextField("Abbreviation", text: $newAbbreviation).frame(width: 140)
+                    TextField("Abbreviation", text: $newAbbreviation, prompt: Text("Abbreviation"))
+                        .labelsHidden().textFieldStyle(.roundedBorder).frame(width: 140)
                     Button("Choose Target…") { chooseTarget() }
                         .disabled(Fuzzy.normalize(newAbbreviation).isEmpty)
                 }
             } header: {
                 Text("Custom abbreviations")
             } footer: {
-                Text("These always win. In the bar, ⌥↩ opens the selected item and assigns it to what you typed.")
+                Footnote("These always win. In the bar, ⌥↩ opens the selected item and assigns it to what you typed.")
             }
             Section {
                 if learned.isEmpty {
@@ -279,7 +360,7 @@ private struct AbbreviationsTab: View {
             } header: {
                 Text("Learned from use")
             } footer: {
-                Text("Choosing an item three times for the same abbreviation makes it the first choice.")
+                Footnote("Choosing an item three times for the same abbreviation makes it the first choice.")
             }
         }
         .formStyle(.grouped)
@@ -335,7 +416,7 @@ private struct SearchTab: View {
                         id: UUID().uuidString.lowercased(), name: "", url: "https://example.com/search?q={query}"))
                 }
             } footer: {
-                Text("Use {query} where the search terms go. A suggestions URL must return OpenSearch JSON; leave it empty for none.")
+                Footnote("Use {query} where the search terms go. A suggestions URL must return OpenSearch JSON; leave it empty for none.")
             }
         }
         .formStyle(.grouped)

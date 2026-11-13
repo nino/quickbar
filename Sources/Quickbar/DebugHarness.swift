@@ -9,7 +9,8 @@ import QuickbarCore
 ///
 /// Steps: `type:<text>`, `key:<up|down|left|right|tab|return|backspace>`, `wait:<seconds>`.
 /// `--dump` prints the rows; `--snapshot` renders the panel to a PNG
-/// (`--dark` in dark mode, `--clipboard` the clipboard panel with sample entries).
+/// (`--dark` in dark mode, `--clipboard` the clipboard panel with sample entries,
+/// `--settings <0-3>` a pane of the Settings window).
 /// In this mode no hotkeys are registered and the clipboard is not watched.
 enum DebugHarness {
     private static let args = Array(CommandLine.arguments.dropFirst())
@@ -90,14 +91,22 @@ enum DebugHarness {
                 }
             }
             if let path = value(after: "--snapshot") {
-                if args.contains("--clipboard"), let clipboard = AppDelegate.shared?.clipboardPanel {
+                if let tab = value(after: "--settings").flatMap(Int.init) {
+                    // Never ordered on screen; laid out and drawn into the bitmap only.
+                    let window = SettingsWindowController.shared.makeWindow()
+                    (window.contentViewController as? NSTabViewController)?.selectedTabViewItemIndex = tab
+                    window.layoutIfNeeded()
+                    if let view = window.contentView?.superview ?? window.contentView {
+                        snapshot(view, to: path)
+                    }
+                } else if args.contains("--clipboard"), let clipboard = AppDelegate.shared?.clipboardPanel {
                     let texts = ["git commit --amend --no-edit", "https://kagi.com/search?q=swift+concurrency",
                                  "func handleEvents(_ events: [(path: String, flags: FSEventStreamEventFlags)]) {\n    let relevant = events.contains { event in\n        event.flags & structural != 0\n    }\n}",
                                  "Meeting moved to Thursday 15:00", "41e3175"]
                     let sample = texts.enumerated().map { ClipboardEntry(text: $1, date: Date().addingTimeInterval(-Double($0 * $0) * 400)) }
-                    snapshot(clipboard.debugPresent(sample), to: path)
-                } else {
-                    snapshot(launcher.panel, to: path)
+                    if let view = clipboard.debugPresent(sample).contentView { snapshot(view, to: path) }
+                } else if let view = launcher.panel.contentView {
+                    snapshot(view, to: path)
                 }
             }
             exit(0)
@@ -116,8 +125,7 @@ enum DebugHarness {
         }
     }
 
-    private static func snapshot(_ panel: NSPanel, to path: String) {
-        guard let view = panel.contentView else { return }
+    private static func snapshot(_ view: NSView, to path: String) {
         view.layoutSubtreeIfNeeded()
         guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
         view.cacheDisplay(in: view.bounds, to: rep)

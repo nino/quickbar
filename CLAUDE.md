@@ -60,12 +60,13 @@ $B --script type:kagi "type:kagi " "type:swift conc" wait:1.5 --dump
 
 Steps: `type:<text>` sets the field as if typed; `key:<up|down|left|right|tab|return|backspace>`;
 `wait:<seconds>`. The blur behind the panel is not captured in snapshots.
-Add `--dark` to render in dark mode and `--clipboard` to snapshot the clipboard
-panel with sample entries. Look at both appearances after any visual change.
+Add `--dark` to render in dark mode, `--clipboard` to snapshot the clipboard
+panel with sample entries, and `--settings <0-3>` to snapshot a Settings pane
+(it renders grey because the window is never shown or made key). Look at both appearances after any visual change.
 
 What the harness cannot check: global hotkeys, focus, the retype timer's
-select-all, the clipboard panel's modifier-release commit, and the Settings
-window. Check those in the running app.
+select-all, the clipboard panel's modifier-release commit, and what the
+Settings controls do when used. Check those in the running app.
 
 ## Logs
 
