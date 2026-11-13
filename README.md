@@ -57,11 +57,14 @@ Builds, copies to `/Applications/Quickbar.app` and starts it. Turn on
 
 ### Clipboard history
 
-Everything you copy as text is kept (100 entries by default). Hold ⌘ and press
+Text (with its formatting), images and copied files are kept (100 entries by
+default). Images are stored as PNG, up to 32 MB each and 512 MB in total;
+for files only the location is remembered. Hold ⌘ and press
 `\` repeatedly to step back through older entries; release ⌘ and the selected
 one is on the clipboard. ⌘⇧\ steps the other way. If you tap and release
 quickly the list stays open: ↑ ↓ to choose, ↩ to take, ⌫ to delete an entry,
-Esc to cancel. Entries marked as secrets by password managers are skipped.
+Esc to cancel. Images and files show a thumbnail. Entries marked as secrets
+by password managers are skipped.
 
 ## Configuration
 

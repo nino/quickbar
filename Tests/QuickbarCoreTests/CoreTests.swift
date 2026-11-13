@@ -336,3 +336,55 @@ private func app(_ name: String) -> Item {
         #expect(FileScanner.scanSystemSettings(in: "/nonexistent").isEmpty)
     }
 }
+
+@Suite struct ClipboardMediaTests {
+    private func image(_ hash: String, bytes: Int = 100) -> ClipboardEntry {
+        ClipboardEntry(kind: .image, payloads: [.init(type: "public.png", file: hash + ".png", bytes: bytes)],
+                       width: 640, height: 480, hash: hash)
+    }
+
+    @Test func oldHistoryFilesStillLoad() throws {
+        let old = #"{"entries":[{"text":"hello","date":700000000}],"maxEntries":50}"#
+        let h = try JSONDecoder().decode(ClipboardHistory.self, from: Data(old.utf8))
+        #expect(h.entries.count == 1)
+        #expect(h.entries[0].kind == .text)
+        #expect(h.entries[0].text == "hello")
+        #expect(h.entries[0].payloads.isEmpty)
+    }
+
+    @Test func sameImageIsPromotedNotStoredTwice() {
+        var h = ClipboardHistory()
+        _ = h.insert(image("aaa"))
+        h.add("text")
+        #expect(h.promote(key: image("aaa").key) == .moved)
+        #expect(h.entries.map(\.kind) == [.image, .text])
+        #expect(h.promote(key: image("aaa").key) == .alreadyFirst)
+        #expect(h.promote(key: image("bbb").key) == .absent)
+    }
+
+    @Test func capReturnsDroppedEntriesSoTheirDataCanBeDeleted() {
+        var h = ClipboardHistory(maxEntries: 2)
+        #expect(h.insert(image("a")).isEmpty)
+        #expect(h.insert(image("b")).isEmpty)
+        let dropped = h.insert(image("c"))
+        #expect(dropped.map(\.hash) == ["a"])
+        #expect(h.entries.map(\.hash) == ["c", "b"])
+    }
+
+    @Test func payloadBudgetDropsOldestMediaButKeepsTextAndNewest() {
+        var h = ClipboardHistory()
+        _ = h.insert(image("old", bytes: 600))
+        h.add("some text")
+        _ = h.insert(image("mid", bytes: 600))
+        _ = h.insert(image("new", bytes: 2000))
+        let dropped = h.trimPayloads(toBytes: 1000)
+        #expect(Set(dropped.compactMap(\.hash)) == ["old", "mid"])
+        #expect(h.entries.map(\.preview) == ["Image  640 × 480", "some text"])
+    }
+
+    @Test func previews() {
+        #expect(ClipboardEntry(kind: .files, files: ["/tmp/a.mov"]).preview == "a.mov")
+        #expect(ClipboardEntry(kind: .files, files: ["/tmp/a.mov", "/tmp/b.png"]).preview == "2 files: a.mov, b.png")
+        #expect(image("x").preview == "Image  640 × 480")
+    }
+}

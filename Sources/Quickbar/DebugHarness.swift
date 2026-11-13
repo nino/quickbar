@@ -113,8 +113,15 @@ enum DebugHarness {
                     let texts = ["git commit --amend --no-edit", "https://kagi.com/search?q=swift+concurrency",
                                  "func handleEvents(_ events: [(path: String, flags: FSEventStreamEventFlags)]) {\n    let relevant = events.contains { event in\n        event.flags & structural != 0\n    }\n}",
                                  "Meeting moved to Thursday 15:00", "41e3175"]
-                    let sample = texts.enumerated().map { ClipboardEntry(text: $1, date: Date().addingTimeInterval(-Double($0 * $0) * 400)) }
-                    if let view = clipboard.debugPresent(sample).contentView { snapshot(view, to: path, rounded: true) }
+                    var sample = texts.enumerated().map { ClipboardEntry(text: $1, date: Date().addingTimeInterval(-Double($0 * $0) * 400)) }
+                    sample.insert(ClipboardEntry(kind: .image, date: Date().addingTimeInterval(-90),
+                                                 payloads: [.init(type: "public.png", file: "sample.png", bytes: 201_606)],
+                                                 width: 1024, height: 1024, hash: "sample"), at: 1)
+                    sample.insert(ClipboardEntry(kind: .files, date: Date().addingTimeInterval(-200),
+                                                 files: ["/System/Library/Sounds/Glass.aiff", "/System/Library/Sounds/Ping.aiff"]), at: 3)
+                    // The sample image has no stored file; the app icon stands in for its thumbnail.
+                    let panel = clipboard.debugPresent(sample, thumbnail: NSImage(contentsOfFile: "Resources/AppIcon.icns") ?? NSApp.applicationIconImage)
+                    if let view = panel.contentView { snapshot(view, to: path, rounded: true) }
                 } else if let view = launcher.panel.contentView {
                     snapshot(view, to: path, rounded: true)
                 }

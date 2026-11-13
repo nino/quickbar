@@ -33,7 +33,9 @@ froze. Every change is judged against this first.
 - `PLAN.md` — stages and ideas not yet built.
 
 User data lives in `~/Library/Application Support/Quickbar/`
-(`config.json`, `learning.json`, `clipboard.json`).
+(`config.json`, `learning.json`, `clipboard.json`, and `clipboard-data/` for
+copied images and rich text; files there are named by entries in the history
+and orphans are deleted at launch).
 
 ## Commands
 
