@@ -64,7 +64,6 @@ Not yet exercised by hand: the individual Settings controls, launch at login.
 - Rich clipboard entries (images, files), paste-on-release
 - System Settings panes, contacts, bookmarks in the index
 - Main-thread stall watchdog
-- Saves are debounced by 1 s; quitting inside that window drops the last change. Flush on terminate.
 - Search is ~0.8 ms for one-letter queries on 3k items; nearly all of it is in
   `Fuzzy.score`. If the index grows past ~30k items, profile that loop first.
 - LaunchBar also registers ⌘\\ for its clipboard history; while both run, both react.

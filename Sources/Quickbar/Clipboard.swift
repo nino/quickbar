@@ -96,6 +96,11 @@ final class ClipboardStore {
             self.publish(save: true)
         }
     }
+
+    /// Hands any waiting save to the disk queue. Blocks briefly; only for quitting.
+    func flush() {
+        queue.sync { saver.flush() }
+    }
 }
 
 /// The cmd-\ panel. Each press of the hotkey moves down one entry; releasing

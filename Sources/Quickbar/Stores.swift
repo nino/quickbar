@@ -31,11 +31,18 @@ enum Disk {
             }
         }
     }
+
+    /// Blocks until every queued write is on disk. Only for quitting.
+    static func waitForWrites() {
+        queue.sync {}
+    }
 }
 
 /// Coalesces bursts of calls into one, `delay` after the last.
 final class Debouncer {
+    private let lock = NSLock()
     private var work: DispatchWorkItem?
+    private var pending: (() -> Void)?
     private let delay: TimeInterval
     private let queue: DispatchQueue
 
@@ -45,10 +52,25 @@ final class Debouncer {
     }
 
     func call(_ block: @escaping () -> Void) {
+        let item = DispatchWorkItem { [weak self] in self?.flush() }
+        lock.lock()
         work?.cancel()
-        let item = DispatchWorkItem(block: block)
         work = item
+        pending = block
+        lock.unlock()
         queue.asyncAfter(deadline: .now() + delay, execute: item)
+    }
+
+    /// Runs the waiting call now, on the caller's thread, if there is one.
+    /// Used at quit so a change made in the last moment is not lost.
+    func flush() {
+        lock.lock()
+        let block = pending
+        pending = nil
+        work?.cancel()
+        work = nil
+        lock.unlock()
+        block?()
     }
 }
 
@@ -80,6 +102,8 @@ final class ConfigStore: ObservableObject {
         }
     }
 
+    func flush() { saver.flush() }
+
     /// Re-reads config.json after a hand edit.
     func reload() {
         Disk.queue.async {
@@ -106,4 +130,6 @@ enum Learning {
     static func save() {
         saver.call { Disk.write(store.encoded(), to: AppPaths.learning) }
     }
+
+    static func flush() { saver.flush() }
 }

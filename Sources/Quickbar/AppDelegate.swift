@@ -99,6 +99,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Saves are delayed to coalesce bursts; write whatever is still waiting.
+    /// Blocking here is fine: the bar is already gone.
+    func applicationWillTerminate(_ notification: Notification) {
+        ConfigStore.shared.flush()
+        Learning.flush()
+        ClipboardStore.shared.flush()
+        Disk.waitForWrites()
+        Log.info("quit, pending saves written")
+    }
+
     /// An accessory app shows no menu bar, but text fields still need an Edit
     /// menu for ⌘V, ⌘C, ⌘A and friends to work.
     private func buildMenu() {
