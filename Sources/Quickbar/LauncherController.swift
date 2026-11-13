@@ -146,7 +146,9 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         // With no rows the panel is only as tall as the bar, so the list's
         // bottom edge has to give way.
         let listBottom = scroll.bottomAnchor.constraint(equalTo: footerSeparator.topAnchor, constant: -Self.listPadding)
-        listBottom.priority = .defaultHigh
+        // Below windowSizeStayPut (500): anything stronger makes Auto Layout
+        // grow the window to fit the footer even when there is nothing to list.
+        listBottom.priority = NSLayoutConstraint.Priority(490)
         NSLayoutConstraint.activate([
             bar.topAnchor.constraint(equalTo: content.topAnchor),
             bar.leadingAnchor.constraint(equalTo: content.leadingAnchor),
