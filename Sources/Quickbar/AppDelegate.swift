@@ -106,7 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "Quit Quickbar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: "Quit Quickbar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
 

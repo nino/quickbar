@@ -25,6 +25,8 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
     private let scroll: NSScrollView
 
     private var rows: [Item] = []
+    /// Matched parts of each row's title (UTF-16 ranges), parallel to `rows`.
+    private var highlights: [[Range<Int>]] = []
     private var mode: LauncherMode = .root
     private var lastText = ""
     private var suggestions: [String] = []
@@ -48,6 +50,16 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
     }
 
     private static let rootPlaceholder = "Search apps and files"
+
+    /// Abbreviations are retyped, not edited, so they get no caret (as in
+    /// LaunchBar). Text you would edit does: a search, or math, a URL or a path.
+    private func updateCaret() {
+        guard let editor = field.currentEditor() as? NSTextView else { return }
+        var editable = QueryEngine.isSticky(field.stringValue)
+        if case .text = mode { editable = true }
+        let color: NSColor = editable ? .controlAccentColor : .clear
+        if editor.insertionPointColor != color { editor.insertionPointColor = color }
+    }
 
     private func setModeIcon(_ name: String) {
         let config = NSImage.SymbolConfiguration(pointSize: 18, weight: .medium)
@@ -185,6 +197,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
         field.currentEditor()?.selectAll(nil)
+        updateCaret()
     }
 
     func hide() {
@@ -234,6 +247,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         if let editor = field.currentEditor() {
             editor.selectedRange = NSRange(location: (text as NSString).length, length: 0)
         }
+        updateCaret()
     }
 
     private func nextGeneration() -> UInt64 {
@@ -260,9 +274,10 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
             // Skip work for keystrokes that have already been superseded.
             guard let self, self.isCurrent(gen) else { return }
             let rows = engine.rows(mode: mode, query: query, config: config, index: index, suggestions: suggestions)
+            let highlights = QueryEngine.highlights(for: rows, mode: mode, query: query)
             DispatchQueue.main.async {
                 guard self.isCurrent(gen) else { return }
-                self.apply(rows, selecting: self.pendingSelectionID ?? keepID)
+                self.apply(rows, highlights: highlights, selecting: self.pendingSelectionID ?? keepID)
                 self.pendingSelectionID = nil
             }
         }
@@ -276,8 +291,9 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         }
     }
 
-    private func apply(_ newRows: [Item], selecting id: String?) {
+    private func apply(_ newRows: [Item], highlights newHighlights: [[Range<Int>]], selecting id: String?) {
         rows = newRows
+        highlights = newHighlights
         table.reloadData()
         separator.isHidden = rows.isEmpty
         footerSeparator.isHidden = rows.isEmpty
@@ -332,6 +348,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
 
         refresh()
         scheduleRetype()
+        updateCaret()
     }
 
     /// After a pause the typed abbreviation is selected, so the next keystroke
@@ -381,6 +398,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
             guard field.stringValue.isEmpty, mode != .root else { return false }
             setMode(.root)
             refresh()
+            updateCaret()
         default:
             return false
         }
@@ -547,7 +565,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let cell = tableView.makeView(withIdentifier: ResultCell.identifier, owner: nil) as? ResultCell ?? ResultCell(frame: .zero)
-        cell.configure(with: rows[row])
+        cell.configure(with: rows[row], highlights: highlights.indices.contains(row) ? highlights[row] : [])
         return cell
     }
 

@@ -208,4 +208,111 @@ public enum Fuzzy {
             }
         }
     }
+
+    // MARK: - Highlighting
+
+    /// Which bytes of `key` the best alignment of `q` uses, in ascending order.
+    /// Same scoring as `score`, kept separate so the hot path carries no
+    /// bookkeeping; this runs only for the rows that are shown.
+    public static func matchPositions(queryBytes q: [UInt8], key: MatchKey) -> [Int] {
+        let t = key.bytes, bonus = key.bonus
+        let n = q.count, m = t.count
+        if n == 0 || n > m { return [] }
+        let floor = none / 2
+
+        func first(_ j: Int) -> Int32 {
+            t[j] == q[0] ? matchScore &+ Int32(bonus[j]) &- Int32(min(j, 6)) : none
+        }
+        var prev = (0..<m).map(first)
+        // parent[i][j]: where query byte i-1 matched when byte i matches at j.
+        var parent = [[Int]](repeating: [Int](repeating: -1, count: m), count: n)
+
+        if n > 1 {
+            for i in 1..<n {
+                var cur = [Int32](repeating: none, count: m)
+                var gap = none, gapFrom = -1
+                for j in 1..<m {
+                    if j >= 2 {
+                        let fresh = prev[j - 2] &- 3
+                        if fresh > gap &- 1 { gap = fresh; gapFrom = j - 2 } else { gap = gap &- 1 }
+                    }
+                    guard t[j] == q[i] else { continue }
+                    var best = none
+                    if prev[j - 1] > floor {
+                        best = prev[j - 1] &+ matchScore &+ max(Int32(bonus[j]), consecutiveBonus)
+                        parent[i][j] = j - 1
+                    }
+                    if gap > floor, gap &+ matchScore &+ Int32(bonus[j]) > best {
+                        best = gap &+ matchScore &+ Int32(bonus[j])
+                        parent[i][j] = gapFrom
+                    }
+                    cur[j] = best
+                }
+                prev = cur
+            }
+        }
+
+        var end = -1, result = floor
+        for j in (n - 1)..<m where prev[j] > result { result = prev[j]; end = j }
+        guard end >= 0 else { return [] }
+        var positions = [Int](repeating: 0, count: n)
+        var j = end
+        for i in stride(from: n - 1, through: 0, by: -1) {
+            guard j >= 0 else { return [] }
+            positions[i] = j
+            j = parent[i][j]
+        }
+        return positions
+    }
+
+    /// The parts of `title` that `query` matched, as UTF-16 ranges for display.
+    /// Empty when the query does not match the title.
+    public static func matchRanges(query: String, title: String) -> [Range<Int>] {
+        let q = queryBytes(query)
+        guard !q.isEmpty else { return [] }
+        let key = makeKey(title)
+        guard mask(of: q) & ~key.mask == 0 else { return [] }
+        let positions = matchPositions(queryBytes: q, key: key)
+        guard !positions.isEmpty else { return [] }
+
+        // The key is folded and lowercased, so its bytes do not line up with
+        // the title's. Rebuild it character by character to know which
+        // character each byte came from.
+        var owner = [Range<Int>]()
+        owner.reserveCapacity(key.bytes.count)
+        var bytes = [UInt8]()
+        bytes.reserveCapacity(key.bytes.count)
+        var offset = 0
+        for ch in title {
+            let width = ch.utf16.count
+            let range = offset..<(offset + width)
+            offset += width
+            if let ascii = ch.asciiValue {
+                bytes.append(ascii >= 65 && ascii <= 90 ? ascii + 32 : ascii)
+                owner.append(range)
+            } else {
+                for scalar in fold(String(ch)).unicodeScalars {
+                    for byte in scalar.properties.lowercaseMapping.utf8 {
+                        bytes.append(byte)
+                        owner.append(range)
+                    }
+                }
+            }
+            if bytes.count >= key.bytes.count { break }
+        }
+        // If folding the whole title behaved differently from folding its
+        // characters, the mapping is wrong; show no highlight rather than a wrong one.
+        guard bytes.count >= key.bytes.count, bytes.prefix(key.bytes.count).elementsEqual(key.bytes) else { return [] }
+
+        var ranges = [Range<Int>]()
+        for p in positions {
+            let r = owner[p]
+            if let last = ranges.last, last.upperBound >= r.lowerBound {
+                ranges[ranges.count - 1] = last.lowerBound..<max(last.upperBound, r.upperBound)
+            } else {
+                ranges.append(r)
+            }
+        }
+        return ranges
+    }
 }

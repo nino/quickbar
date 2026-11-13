@@ -234,3 +234,46 @@ private func app(_ name: String) -> Item {
         #expect(FileScanner.listDirectory(root.appendingPathComponent("a").path).map(\.title) == ["b", "file.txt"])
     }
 }
+
+@Suite struct HighlightTests {
+    private func marked(_ query: String, _ title: String) -> String {
+        let utf16 = Array(title.utf16)
+        var out = ""
+        var i = 0
+        for r in Fuzzy.matchRanges(query: query, title: title) {
+            out += String(decoding: utf16[i..<r.lowerBound], as: UTF16.self)
+            out += "[" + String(decoding: utf16[r], as: UTF16.self) + "]"
+            i = r.upperBound
+        }
+        return out + String(decoding: utf16[i...], as: UTF16.self)
+    }
+
+    @Test func prefersWordStarts() {
+        #expect(marked("vsc", "Visual Studio Code") == "[V]isual [S]tudio [C]ode")
+        #expect(marked("saf", "Safari") == "[Saf]ari")
+        #expect(marked("r", "Brave Browser") == "B[r]ave Browser")
+    }
+
+    @Test func noMatchGivesNoRanges() {
+        #expect(Fuzzy.matchRanges(query: "xyz", title: "Safari").isEmpty)
+        #expect(Fuzzy.matchRanges(query: "", title: "Safari").isEmpty)
+    }
+
+    @Test func nonASCIITitlesMapBackToCharacters() {
+        #expect(marked("cafe", "Café Notes") == "[Café] Notes")
+        #expect(marked("pdf", "年8月 report.pdf") == "年8月 report.[pdf]")
+        #expect(marked("uber", "Über uns") == "[Über] uns")
+    }
+
+    @Test func alignmentAgreesWithScore() {
+        // The highlighted alignment must be one that reaches the reported score:
+        // every highlighted character is a query character, in order.
+        for (q, title) in [("term", "Terminal"), ("ss", "System Settings"), ("abc", "a b c abc"), ("gd", "Google Drive Docs")] {
+            let key = Fuzzy.makeKey(title)
+            let positions = Fuzzy.matchPositions(queryBytes: Fuzzy.queryBytes(q), key: key)
+            #expect(positions.count == q.utf8.count)
+            #expect(positions == positions.sorted())
+            #expect(positions.map { key.bytes[$0] } == Array(q.utf8))
+        }
+    }
+}

@@ -28,10 +28,9 @@ final class FloatingPanel: NSPanel {
         effect.material = .popover
         effect.state = .active
         effect.blendingMode = .behindWindow
-        effect.wantsLayer = true
-        effect.layer?.cornerRadius = Theme.cornerRadius
-        effect.layer?.cornerCurve = .continuous
-        effect.layer?.masksToBounds = true
+        // Rounding the layer does not clip the blur itself, which then shows as
+        // light wedges outside the corners. A mask image clips blur and shadow.
+        effect.maskImage = Self.roundedMask(radius: Theme.cornerRadius)
         effect.autoresizingMask = [.width, .height]
         // A hairline edge keeps the panel defined over busy or same-coloured backgrounds.
         let edge = TintedBox(fill: .clear, radius: Theme.cornerRadius, border: NSColor.labelColor.withAlphaComponent(0.14))
@@ -42,11 +41,30 @@ final class FloatingPanel: NSPanel {
         contentView = effect
     }
 
+    private static func roundedMask(radius: CGFloat) -> NSImage {
+        let side = radius * 2 + 1
+        let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+            return true
+        }
+        image.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
+        image.resizingMode = .stretch
+        return image
+    }
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if keyEquivalentHandler?(event) == true { return true }
+        // The panels never make Quickbar the active app, so the menu's ⌘Q
+        // would go to whichever app is in front. Handle it here.
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command, event.keyCode == 12 {
+            Log.info("quit by ⌘Q")
+            NSApp.terminate(nil)
+            return true
+        }
         return super.performKeyEquivalent(with: event)
     }
 
@@ -63,12 +81,14 @@ final class FloatingPanel: NSPanel {
         let width = frame.width
         let top = visible.maxY - (visible.height * 0.18).rounded()
         setFrame(NSRect(x: (visible.midX - width / 2).rounded(), y: top - height, width: width, height: height), display: true)
+        invalidateShadow()
     }
 
     /// Resizes keeping the top edge where it is.
     func setHeight(_ height: CGFloat) {
         guard abs(frame.height - height) > 0.5 else { return }
         setFrame(NSRect(x: frame.minX, y: frame.maxY - height, width: frame.width, height: height), display: true)
+        invalidateShadow()
     }
 }
 
@@ -99,13 +119,22 @@ final class ResultCell: NSTableCellView {
     private var titleCenterY: NSLayoutConstraint!
     private var titleTop: NSLayoutConstraint!
     private(set) var itemID = ""
+    private var titleText = ""
+    private var titleHighlights: [Range<Int>] = []
+    private static let titleFont = NSFont.systemFont(ofSize: 15, weight: .regular)
+    private static let matchFont = NSFont.systemFont(ofSize: 15, weight: .bold)
+    private static let titleParagraph: NSParagraphStyle = {
+        let style = NSMutableParagraphStyle()
+        style.lineBreakMode = .byTruncatingTail
+        return style
+    }()
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         identifier = Self.identifier
         // Symbols keep their own size; file icons are already rasterized at 32 pt.
         icon.imageScaling = .scaleProportionallyDown
-        title.font = .systemFont(ofSize: 15, weight: .medium)
+        title.font = Self.titleFont
         title.lineBreakMode = .byTruncatingTail
         subtitle.font = .systemFont(ofSize: 11.5)
         subtitle.lineBreakMode = .byTruncatingMiddle
@@ -146,10 +175,38 @@ final class ResultCell: NSTableCellView {
 
     private func applyColors() {
         let selected = backgroundStyle == .emphasized
-        title.textColor = selected ? .white : .labelColor
+        renderTitle(selected: selected)
         subtitle.textColor = selected ? NSColor.white.withAlphaComponent(0.75) : .secondaryLabelColor
         detail.textColor = selected ? NSColor.white.withAlphaComponent(0.75) : .tertiaryLabelColor
         icon.contentTintColor = selected ? .white : .secondaryLabelColor
+    }
+
+    /// The title with the matched characters in bold. When something matched,
+    /// the rest steps back a little so the match carries the eye.
+    private func renderTitle(selected: Bool) {
+        let base: NSColor = selected ? .white : .labelColor
+        guard !titleHighlights.isEmpty else {
+            title.textColor = base
+            title.stringValue = titleText
+            return
+        }
+        // withAlphaComponent freezes a dynamic colour for whatever appearance is
+        // current, which is not always this view's; resolve it for the view.
+        var dimmed = base
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            dimmed = base.withAlphaComponent(selected ? 0.82 : 0.72)
+        }
+        let text = NSMutableAttributedString(string: titleText, attributes: [
+            .font: Self.titleFont,
+            .foregroundColor: dimmed,
+            .paragraphStyle: Self.titleParagraph,
+        ])
+        let length = text.length
+        for r in titleHighlights where r.upperBound <= length {
+            text.addAttributes([.font: Self.matchFont, .foregroundColor: base],
+                               range: NSRange(location: r.lowerBound, length: r.count))
+        }
+        title.attributedStringValue = text
     }
 
     /// What the row is, shown at the trailing edge.
@@ -168,9 +225,11 @@ final class ResultCell: NSTableCellView {
         }
     }
 
-    func configure(with item: Item) {
+    func configure(with item: Item, highlights: [Range<Int>] = []) {
         itemID = item.id
-        title.stringValue = item.title
+        titleText = item.title
+        titleHighlights = highlights
+        renderTitle(selected: backgroundStyle == .emphasized)
         subtitle.stringValue = item.subtitle
         detail.stringValue = Self.kindLabel(for: item)
         let hasSubtitle = !item.subtitle.isEmpty
@@ -223,7 +282,6 @@ final class TintedBox: NSView {
     override func updateLayer() {
         guard let layer else { return }
         layer.cornerRadius = radius
-        layer.cornerCurve = .continuous
         layer.backgroundColor = fill.cgColor
         layer.borderColor = border?.cgColor
         layer.borderWidth = border == nil ? 0 : 1

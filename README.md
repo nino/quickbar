@@ -28,6 +28,7 @@ Builds, copies to `/Applications/Quickbar.app` and starts it. Turn on
 | Space | After an abbreviation that selected a search template: start typing the query |
 | ⌫ on empty text | Back to the index |
 | ⌘, | Settings |
+| ⌘Q | Quit Quickbar (while the bar or clipboard panel is open) |
 | Esc | Hide |
 
 - **Retype delay.** Pause for a second and the abbreviation is selected, so

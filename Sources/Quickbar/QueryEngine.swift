@@ -33,6 +33,31 @@ final class QueryEngine {
         }
     }
 
+    /// Which characters of each row's title the typed text matched. Runs on the
+    /// search queue with the rows, so the main thread only applies the result.
+    static func highlights(for rows: [Item], mode: LauncherMode, query: String) -> [[Range<Int>]] {
+        var needle = query.trimmingCharacters(in: .whitespaces)
+        switch mode {
+        case .text: return []
+        case .browse: break
+        case .root:
+            // A typed path filters by its last component only.
+            if needle.hasPrefix("/") || needle.hasPrefix("~") {
+                needle = needle.hasSuffix("/") ? "" : (needle as NSString).lastPathComponent
+            }
+        }
+        guard !needle.isEmpty else { return [] }
+        return rows.map { item in
+            switch item.kind {
+            case .app, .folder, .file, .searchTemplate, .action:
+                return Fuzzy.matchRanges(query: needle, title: item.title)
+            case .webSearch, .url, .calculation:
+                // These titles are made from the typed text, not matched against it.
+                return []
+            }
+        }
+    }
+
     private func directory(_ path: String) -> (items: [Item], index: SearchIndex) {
         if let c = cachedDirectory, c.path == path { return (c.items, c.index) }
         let items = FileScanner.listDirectory(path)
