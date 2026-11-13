@@ -3,6 +3,18 @@
 A small, fast launcher for macOS, built to replace the handful of LaunchBar
 features I actually use. Native Swift, no dependencies.
 
+<img src="docs/screenshots/launcher.png" width="680" alt="Quickbar showing results for “term”, with matched letters in bold and key hints in the footer">
+
+| | |
+|---|---|
+| <img src="docs/screenshots/kagi.png" width="400" alt="Kagi search with live suggestions"> | <img src="docs/screenshots/browse.png" width="400" alt="Browsing a folder with the arrow keys"> |
+| Web search with live suggestions | Walking folders with the arrow keys |
+| <img src="docs/screenshots/system-settings.png" width="400" alt="A System Settings pane in the results"> | <img src="docs/screenshots/clipboard.png" width="400" alt="Clipboard history panel"> |
+| System Settings panes | Clipboard history on ⌘\ |
+
+The images are rendered by the app's headless harness (see Development), so
+they lack the blur and shadow of the real window.
+
 ## Install
 
 ```bash
@@ -17,7 +29,7 @@ Builds, copies to `/Applications/Quickbar.app` and starts it. Turn on
 | Key | What it does |
 |-----|--------------|
 | ⌥Space | Show / hide the bar (change in Settings) |
-| type | Abbreviation search over apps, files, folders, search templates |
+| type | Abbreviation search over apps, files, folders, System Settings panes, search templates |
 | ↑ ↓ | Move through results |
 | ↩ | Open the selected item |
 | ⌘↩ | Reveal it in Finder |

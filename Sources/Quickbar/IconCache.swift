@@ -16,12 +16,17 @@ final class IconCache {
 
     /// Immediate icon if there is one: a symbol for non-file items or a cached file icon.
     func immediate(for item: Item) -> NSImage? {
-        guard let path = item.path else { return symbol(for: item.kind) }
+        guard let path = Self.iconPath(for: item) else { return symbol(for: item.kind) }
         return cache.object(forKey: path as NSString)
     }
 
+    /// System Settings panes are not files to open, but their bundle has the icon.
+    private static func iconPath(for item: Item) -> String? {
+        item.path ?? (item.kind == .setting ? item.aux : nil)
+    }
+
     func load(_ item: Item, completion: @escaping (NSImage) -> Void) {
-        guard let path = item.path else { return }
+        guard let path = Self.iconPath(for: item) else { return }
         queue.async {
             let image = Self.rasterize(NSWorkspace.shared.icon(forFile: path))
             self.cache.setObject(image, forKey: path as NSString)

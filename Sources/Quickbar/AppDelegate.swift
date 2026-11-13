@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.launcher.indexDidUpdate()
             DebugHarness.indexReady()
         }
-        IndexManager.shared.configure(store.config)
+        IndexManager.shared.configure(DebugHarness.indexConfig(store.config))
 
         if DebugHarness.isActive {
             DebugHarness.start(launcher: launcher)

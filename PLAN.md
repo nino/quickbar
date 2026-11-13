@@ -62,7 +62,7 @@ Not yet exercised by hand: the individual Settings controls, launch at login.
 ## Later / ideas
 
 - Rich clipboard entries (images, files), paste-on-release
-- System Settings panes, contacts, bookmarks in the index
+- Contacts, bookmarks in the index
 - Main-thread stall watchdog
 - Search is ~0.05–0.1 ms per query on 3k items. (It was ~0.8 ms while learning
   bonuses were looked up by hashing every match's id; they are now resolved to

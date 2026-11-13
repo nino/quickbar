@@ -33,7 +33,8 @@ final class IndexManager {
         Item(id: "action:quit", title: "Quit Quickbar", kind: .action, payload: "quit"),
     ]
 
-    /// Applications, search templates and built-in actions: quick to gather and
+    /// Applications, search templates, built-in actions and System Settings
+    /// panes: quick to gather and
     /// never blocked by a privacy prompt.
     static func baseItems(config: Config) -> [Item] {
         var items = FileScanner.scanApplications(in: config.applicationFolders)
@@ -41,6 +42,7 @@ final class IndexManager {
             items.append(Item(id: "template:\(t.id)", title: t.name, subtitle: "Web search", kind: .searchTemplate, payload: t.id))
         }
         items.append(contentsOf: actions)
+        items.append(contentsOf: FileScanner.scanSystemSettings())
         return items
     }
 

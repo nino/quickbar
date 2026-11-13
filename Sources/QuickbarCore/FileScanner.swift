@@ -92,4 +92,41 @@ public enum FileScanner {
         guard let v = try? url.resourceValues(forKeys: [.isDirectoryKey]) else { return false }
         return v.isDirectory == true
     }
+
+    // MARK: - System Settings
+
+    /// Names the system reports that are not what System Settings shows.
+    private static let settingsNameOverrides = [
+        "com.apple.Battery-Settings.extension": "Battery",
+    ]
+
+    /// The panes of System Settings. Since macOS 13 each is an extension
+    /// bundle, opened through the x-apple.systempreferences: URL scheme.
+    public static func scanSystemSettings(in directory: String = "/System/Library/ExtensionKit/Extensions") -> [Item] {
+        let root = URL(fileURLWithPath: directory)
+        guard let urls = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) else { return [] }
+        var items = [Item]()
+        for url in urls where url.pathExtension == "appex" {
+            guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier, let info = bundle.infoDictionary,
+                  let attributes = info["EXAppExtensionAttributes"] as? [String: Any],
+                  attributes["EXExtensionPointIdentifier"] as? String == "com.apple.Settings.extension.ui"
+            else { continue }
+            let pane = attributes["SettingsExtensionAttributes"] as? [String: Any]
+            guard pane?["allowsXAppleSystemPreferencesURLScheme"] as? Bool == true else { continue }
+
+            let localized = bundle.localizedInfoDictionary
+            let name = settingsNameOverrides[id]
+                ?? localized?["CFBundleDisplayName"] as? String
+                ?? localized?["CFBundleName"] as? String
+                ?? info["CFBundleDisplayName"] as? String
+            // Some panes only carry an internal name ("HeadphoneSettingsExtension",
+            // "FollowUps"); those are not panes a person looks for by name.
+            guard let name, !name.isEmpty, !name.hasSuffix("Extension"), !name.hasSuffix("Preferences"),
+                  name != "FollowUps"
+            else { continue }
+            items.append(Item(id: "settings:\(id)", title: name, subtitle: "System Settings", kind: .setting,
+                              payload: "x-apple.systempreferences:\(id)", aux: url.path))
+        }
+        return items.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+    }
 }

@@ -12,6 +12,9 @@ public enum ItemKind: String, Codable, Sendable {
     case url
     /// `payload` is the result to copy.
     case calculation
+    /// A pane of System Settings; `payload` is the URL that opens it, `aux`
+    /// the path of its extension bundle (for the icon).
+    case setting
     /// Built-in command; `payload` is the action name.
     case action
 }

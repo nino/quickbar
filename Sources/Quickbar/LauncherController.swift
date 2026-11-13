@@ -86,6 +86,8 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
             list = [Hint(key: "↩", label: "Copy Result")]
         case .action:
             list = [Hint(key: "↩", label: "Run")]
+        case .setting:
+            list = [Hint(key: "↩", label: "Open in System Settings")]
         }
         let text = field.stringValue
         if mode == .root, !text.isEmpty, !QueryEngine.isSticky(text), item.kind != .searchTemplate {
@@ -558,6 +560,12 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
             learn(item, query: query)
             hide()
             if let name = item.payload { actionHandler?(name) }
+
+        case .setting:
+            guard let url = item.payload.flatMap(URL.init(string:)) else { return }
+            learn(item, query: query)
+            hide()
+            Opener.open(url)
         }
     }
 

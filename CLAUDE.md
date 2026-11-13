@@ -62,7 +62,9 @@ Steps: `type:<text>` sets the field as if typed; `key:<up|down|left|right|tab|re
 `wait:<seconds>`. The blur behind the panel is not captured in snapshots.
 Add `--dark` to render in dark mode, `--clipboard` to snapshot the clipboard
 panel with sample entries, and `--settings <0-3>` to snapshot a Settings pane
-(it renders grey because the window is never shown or made key). Look at both appearances after any visual change.
+(it renders grey because the window is never shown or made key).
+`--no-files` indexes no folders: use it for anything that will be published
+(the README images in `docs/screenshots/`), so no personal file names appear. Look at both appearances after any visual change.
 
 What the harness cannot check: global hotkeys, focus, the retype timer's
 select-all, the clipboard panel's modifier-release commit, and what the
@@ -85,6 +87,6 @@ log, the pasteboard and the files in Application Support. Do not use
 - Config fields must have defaults and be read with `decodeIfPresent`
   (`Config.init(from:)`), so old config files keep loading.
 - Item ids are stable strings: file paths for file-system items, `template:<id>`,
-  `action:<name>`. Learning and custom abbreviations key on them.
+  `action:<name>`, `settings:<bundle id>`. Learning and custom abbreviations key on them.
 - Comments say why, not what.
 - Commit in small stages with the tests passing.

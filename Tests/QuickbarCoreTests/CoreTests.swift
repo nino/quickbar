@@ -320,3 +320,19 @@ private func app(_ name: String) -> Item {
         #expect(hits.first?.item.title == "Ghostty")
     }
 }
+
+@Suite struct SystemSettingsTests {
+    @Test func findsPanesWithReadableNames() {
+        let panes = FileScanner.scanSystemSettings()
+        // The directory is part of macOS; if Apple moves it this should fail loudly.
+        #expect(panes.count > 20)
+        #expect(panes.contains { $0.title == "Displays" })
+        #expect(panes.contains { $0.title == "Battery" })
+        #expect(panes.allSatisfy { $0.kind == .setting && $0.payload?.hasPrefix("x-apple.systempreferences:") == true })
+        #expect(!panes.contains { $0.title.hasSuffix("Extension") })
+    }
+
+    @Test func missingDirectoryGivesNothing() {
+        #expect(FileScanner.scanSystemSettings(in: "/nonexistent").isEmpty)
+    }
+}

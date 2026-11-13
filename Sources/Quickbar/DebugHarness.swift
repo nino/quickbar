@@ -10,7 +10,8 @@ import QuickbarCore
 /// Steps: `type:<text>`, `key:<up|down|left|right|tab|return|backspace>`, `wait:<seconds>`.
 /// `--dump` prints the rows; `--snapshot` renders the panel to a PNG
 /// (`--dark` in dark mode, `--clipboard` the clipboard panel with sample entries,
-/// `--settings <0-3>` a pane of the Settings window).
+/// `--settings <0-3>` a pane of the Settings window; `--no-files` indexes no
+/// folders, for snapshots that will be published).
 /// In this mode no hotkeys are registered and the clipboard is not watched.
 enum DebugHarness {
     private static let args = Array(CommandLine.arguments.dropFirst())
@@ -21,6 +22,15 @@ enum DebugHarness {
 
     static func start(launcher: LauncherController) {
         self.launcher = launcher
+    }
+
+    /// `--no-files` leaves the indexed folders out, so snapshots meant for
+    /// other people show no personal file names.
+    static func indexConfig(_ config: Config) -> Config {
+        guard isActive, args.contains("--no-files") else { return config }
+        var copy = config
+        copy.folders = []
+        return copy
     }
 
     static func indexReady() {
@@ -104,9 +114,9 @@ enum DebugHarness {
                                  "func handleEvents(_ events: [(path: String, flags: FSEventStreamEventFlags)]) {\n    let relevant = events.contains { event in\n        event.flags & structural != 0\n    }\n}",
                                  "Meeting moved to Thursday 15:00", "41e3175"]
                     let sample = texts.enumerated().map { ClipboardEntry(text: $1, date: Date().addingTimeInterval(-Double($0 * $0) * 400)) }
-                    if let view = clipboard.debugPresent(sample).contentView { snapshot(view, to: path) }
+                    if let view = clipboard.debugPresent(sample).contentView { snapshot(view, to: path, rounded: true) }
                 } else if let view = launcher.panel.contentView {
-                    snapshot(view, to: path)
+                    snapshot(view, to: path, rounded: true)
                 }
             }
             exit(0)
@@ -125,13 +135,17 @@ enum DebugHarness {
         }
     }
 
-    private static func snapshot(_ view: NSView, to path: String) {
+    private static func snapshot(_ view: NSView, to path: String, rounded: Bool = false) {
         view.layoutSubtreeIfNeeded()
         guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
         view.cacheDisplay(in: view.bounds, to: rep)
         // The blur behind the panel is not captured; put a plain background under it.
         let image = NSImage(size: view.bounds.size)
         image.lockFocus()
+        // Panels are clipped to their rounded shape, leaving the corners transparent.
+        if rounded {
+            NSBezierPath(roundedRect: view.bounds, xRadius: Theme.cornerRadius, yRadius: Theme.cornerRadius).addClip()
+        }
         view.effectiveAppearance.performAsCurrentDrawingAppearance {
             NSColor.windowBackgroundColor.setFill()
             view.bounds.fill()
