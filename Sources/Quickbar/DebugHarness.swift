@@ -15,13 +15,16 @@ enum DebugHarness {
     static var isActive: Bool { args.contains("--script") || args.contains("--bench") }
     private static weak var launcher: LauncherController?
     private static var started = false
+    private static var updates = 0
 
     static func start(launcher: LauncherController) {
         self.launcher = launcher
     }
 
     static func indexReady() {
-        guard isActive, !started else { return }
+        // The first update carries applications only; wait for the full index.
+        updates += 1
+        guard isActive, !started, updates >= 2 else { return }
         started = true
         if args.contains("--bench") {
             bench()

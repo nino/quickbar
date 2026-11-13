@@ -33,17 +33,15 @@ final class IndexManager {
         Item(id: "action:quit", title: "Quit Quickbar", kind: .action, payload: "quit"),
     ]
 
-    static func buildIndex(config: Config) -> SearchIndex {
+    /// Applications, search templates and built-in actions: quick to gather and
+    /// never blocked by a privacy prompt.
+    static func baseItems(config: Config) -> [Item] {
         var items = FileScanner.scanApplications(in: config.applicationFolders)
         for t in config.searchTemplates {
             items.append(Item(id: "template:\(t.id)", title: t.name, subtitle: "Search — press Space to type", kind: .searchTemplate, payload: t.id))
         }
         items.append(contentsOf: actions)
-        let excluded = Set(config.excludedNames)
-        for folder in config.folders {
-            items.append(contentsOf: FileScanner.scanFolder(root: folder.path, depth: folder.depth, excluding: excluded))
-        }
-        return SearchIndex(items: items)
+        return items
     }
 
     /// Applies a config: rebuilds the index and re-targets the folder watcher.
@@ -59,15 +57,27 @@ final class IndexManager {
         queue.async { self.rebuildNow() }
     }
 
-    private func rebuildNow() {
-        let start = DispatchTime.now()
-        let built = Self.buildIndex(config: config)
+    private func publish(_ items: [Item]) {
+        let built = SearchIndex(items: items)
         lock.lock()
         current = built
         lock.unlock()
-        let ms = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1e6
-        NSLog("Quickbar: indexed \(built.items.count) items in \(String(format: "%.0f", ms)) ms")
         DispatchQueue.main.async { self.onUpdate?() }
+    }
+
+    private func rebuildNow() {
+        let start = DispatchTime.now()
+        var items = Self.baseItems(config: config)
+        // On the first build, make applications searchable right away: scanning
+        // a protected folder can sit behind a permission prompt for minutes.
+        if index.items.isEmpty { publish(items) }
+        let excluded = Set(config.excludedNames)
+        for folder in config.folders {
+            items.append(contentsOf: FileScanner.scanFolder(root: folder.path, depth: folder.depth, excluding: excluded))
+        }
+        publish(items)
+        let ms = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1e6
+        NSLog("Quickbar: indexed \(items.count) items in \(String(format: "%.0f", ms)) ms")
     }
 
     // MARK: - FSEvents

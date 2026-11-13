@@ -18,6 +18,8 @@ enum Disk {
     static let queue = DispatchQueue(label: "quickbar.disk", qos: .utility)
 
     static func write(_ data: @autoclosure @escaping () -> Data, to url: URL, privateFile: Bool = false) {
+        // Scripted runs must not touch the user's real settings or history.
+        if DebugHarness.isActive { return }
         queue.async {
             do {
                 try data().write(to: url, options: .atomic)
