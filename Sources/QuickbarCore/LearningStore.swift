@@ -9,13 +9,34 @@ public struct LearningBonus: Sendable {
 
     public var isEmpty: Bool { perItem.isEmpty && uses.isEmpty }
 
+    /// Something opened before outranks something never opened unless the
+    /// never-opened one is a clearly better match: the base bonus is about the
+    /// gap between a mid-word and a word-start match of one letter.
     @inline(__always)
     public func value(for id: String) -> Int32 {
+        adjustment(for: id).bonus
+    }
+
+    @inline(__always)
+    func adjustment(for id: String) -> (bonus: Int32, used: Bool) {
         var v = perItem[id] ?? 0
-        if let u = uses[id] {
-            v += min(Int32(log2(Double(u + 1)) * 2), 12)
+        guard let u = uses[id], u > 0 else { return (v, false) }
+        v += 18 + min(Int32(log2(Double(u + 1)) * 3), 15)
+        return (v, true)
+    }
+
+    /// The same adjustments keyed by position in an index. Search matches
+    /// thousands of items for short queries but only a handful have a bonus,
+    /// so it looks these few up once instead of hashing every match's id.
+    func resolved(using idToIndex: [String: Int]) -> [Int: (bonus: Int32, used: Bool)] {
+        var out = [Int: (bonus: Int32, used: Bool)](minimumCapacity: perItem.count + uses.count)
+        for id in perItem.keys {
+            if let i = idToIndex[id] { out[i] = adjustment(for: id) }
         }
-        return v
+        for id in uses.keys where perItem[id] == nil {
+            if let i = idToIndex[id] { out[i] = adjustment(for: id) }
+        }
+        return out
     }
 }
 

@@ -63,6 +63,9 @@ public final class SearchIndex: Sendable {
         }
     }
 
+    /// How many previously opened matches may be added beyond `limit`.
+    static let maxUsedExtras = 10
+
     public func search(_ query: String, bonus: LearningBonus = .none, limit: Int = 50) -> [SearchHit] {
         let q = Fuzzy.queryBytes(query)
         if q.isEmpty || items.isEmpty { return [] }
@@ -93,10 +96,18 @@ public final class SearchIndex: Sendable {
         // Ranking touches only flat arrays; copying `Item`s here would dominate
         // the cost for short queries that match thousands of titles.
         let useLearning = !bonus.isEmpty
+        // Matches that have been opened before; kept even when they fall below
+        // the cut, so any used item can be reached, chosen and so learned for
+        // a new abbreviation.
+        var used = [(score: Int32, index: Int32)]()
+        let adjustments = useLearning ? bonus.resolved(using: idToIndex) : [:]
         for k in scored.indices {
             let i = Int(scored[k].index)
             scored[k].score += kindBonuses[i]
-            if useLearning { scored[k].score += bonus.value(for: items[i].id) }
+            if let adjust = adjustments[i] {
+                scored[k].score += adjust.bonus
+                if adjust.used { used.append(scored[k]) }
+            }
         }
 
         // Short queries match most of the index but only `limit` rows are shown:
@@ -124,6 +135,12 @@ public final class SearchIndex: Sendable {
             if la != lb { return la < lb }
             return a.index < b.index
         }
-        return scored.prefix(limit).map { SearchHit(item: items[Int($0.index)], score: $0.score) }
+        var top = Array(scored.prefix(limit))
+        if !used.isEmpty, scored.count > limit || top.count < used.count {
+            let shown = Set(top.map(\.index))
+            let extra = used.filter { !shown.contains($0.index) }.sorted { $0.score > $1.score }
+            top.append(contentsOf: extra.prefix(Self.maxUsedExtras))
+        }
+        return top.map { SearchHit(item: items[Int($0.index)], score: $0.score) }
     }
 }

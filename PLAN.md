@@ -64,6 +64,7 @@ Not yet exercised by hand: the individual Settings controls, launch at login.
 - Rich clipboard entries (images, files), paste-on-release
 - System Settings panes, contacts, bookmarks in the index
 - Main-thread stall watchdog
-- Search is ~0.8 ms for one-letter queries on 3k items; nearly all of it is in
-  `Fuzzy.score`. If the index grows past ~30k items, profile that loop first.
+- Search is ~0.05–0.1 ms per query on 3k items. (It was ~0.8 ms while learning
+  bonuses were looked up by hashing every match's id; they are now resolved to
+  index positions once per query.)
 - LaunchBar also registers ⌘\\ for its clipboard history; while both run, both react.

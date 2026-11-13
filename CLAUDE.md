@@ -16,7 +16,8 @@ froze. Every change is judged against this first.
   locks, lazy loading or per-keystroke allocation of `Item`s to the search path.
 - The hotkey handler only shows a panel that already exists.
 - After touching the search path, run `.build/release/Quickbar --bench` and
-  compare. Typical: well under 1 ms per query on ~3k items.
+  compare. Typical: around 0.1 ms per query on ~3k items. Never hash item ids
+  per match; resolve anything keyed by id to index positions once per query.
 
 ## Layout
 

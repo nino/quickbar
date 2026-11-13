@@ -277,3 +277,46 @@ private func app(_ name: String) -> Item {
         }
     }
 }
+
+@Suite struct UsedItemTests {
+    /// Sixty titles starting with "t" and one, opened before, with a "t" in the middle.
+    private func crowded() -> SearchIndex {
+        var items = (0..<60).map { Item(id: "/Applications/Tool\($0).app", title: "Tool \($0)", kind: .app) }
+        items.append(Item(id: "/Applications/Ghostty.app", title: "Ghostty", kind: .app))
+        return SearchIndex(items: items)
+    }
+
+    @Test func neverOpenedWeakMatchIsCut() {
+        let hits = crowded().search("t", limit: 50)
+        #expect(!hits.contains { $0.item.title == "Ghostty" })
+    }
+
+    @Test func openedItemAppearsForAnyAbbreviationItMatches() {
+        let store = LearningStore()
+        store.record(query: "gho", itemID: "/Applications/Ghostty.app")
+        let hits = crowded().search("t", bonus: store.bonus(for: "t"), limit: 50)
+        let rank = hits.firstIndex { $0.item.title == "Ghostty" }
+        #expect(rank != nil)
+        // Near the top, so it can be picked without scrolling through everything.
+        #expect((rank ?? 99) < 8)
+    }
+
+    @Test func openedItemSurvivesTheCutEvenWhenOutscored() {
+        // A match so weak that the bonus for having been opened cannot lift it
+        // into the top 50; it must still be listed.
+        let weak = Item(id: "/Applications/Weak.app", title: String(repeating: "a", count: 40) + "t", kind: .app)
+        let index = SearchIndex(items: (0..<60).map { Item(id: "/Applications/Tool\($0).app", title: "Tool \($0)", kind: .app) } + [weak])
+        let store = LearningStore()
+        store.recordUse(itemID: weak.id)
+        let hits = index.search("t", bonus: store.bonus(for: "t"), limit: 50)
+        #expect(hits.count == 51)
+        #expect(hits.last?.item.id == weak.id)
+    }
+
+    @Test func threePicksStillTakeFirstPlace() {
+        let store = LearningStore()
+        for _ in 0..<3 { store.record(query: "t", itemID: "/Applications/Ghostty.app") }
+        let hits = crowded().search("t", bonus: store.bonus(for: "t"), limit: 50)
+        #expect(hits.first?.item.title == "Ghostty")
+    }
+}
