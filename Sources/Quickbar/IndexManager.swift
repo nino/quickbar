@@ -38,7 +38,7 @@ final class IndexManager {
     static func baseItems(config: Config) -> [Item] {
         var items = FileScanner.scanApplications(in: config.applicationFolders)
         for t in config.searchTemplates {
-            items.append(Item(id: "template:\(t.id)", title: t.name, subtitle: "Search — press Space to type", kind: .searchTemplate, payload: t.id))
+            items.append(Item(id: "template:\(t.id)", title: t.name, subtitle: "Web search", kind: .searchTemplate, payload: t.id))
         }
         items.append(contentsOf: actions)
         return items

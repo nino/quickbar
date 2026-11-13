@@ -39,7 +39,7 @@ final class IconCache {
         case .action: name = "gearshape"
         default: name = "doc"
         }
-        let config = NSImage.SymbolConfiguration(pointSize: 20, weight: .regular)
+        let config = NSImage.SymbolConfiguration(pointSize: 17, weight: .medium)
         let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config)
         image?.isTemplate = true
         symbols[kind] = image

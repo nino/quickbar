@@ -8,15 +8,19 @@ import QuickbarCore
 /// has happened since. The main thread never waits on anything.
 final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSource, NSTableViewDelegate, NSWindowDelegate {
     static let width: CGFloat = 680
-    static let barHeight: CGFloat = 54
-    static let rowHeight: CGFloat = 44
+    static let barHeight: CGFloat = 58
+    static let rowHeight: CGFloat = 48
     static let maxVisibleRows = 8
     static let listPadding: CGFloat = 6
 
     let panel = FloatingPanel(size: NSSize(width: LauncherController.width, height: LauncherController.barHeight))
     private let field = NSTextField()
     private let chip = NSTextField(labelWithString: "")
+    private let chipPill = TintedBox(fill: NSColor.labelColor.withAlphaComponent(0.09), radius: 7)
+    private let modeIcon = NSImageView()
     private let separator = NSBox()
+    private let footerSeparator = NSBox()
+    private let hints = KeyHintBar(trailing: .init(key: "⌘,", label: "Settings"))
     private let table: ResultsTableView
     private let scroll: NSScrollView
 
@@ -43,50 +47,103 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         buildViews()
     }
 
+    private static let rootPlaceholder = "Search apps and files"
+
+    private func setModeIcon(_ name: String) {
+        let config = NSImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+        modeIcon.image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config)
+    }
+
+    /// What the keys do for the selected row, shown in the footer.
+    private func updateHints() {
+        guard let item = selectedItem else { return }
+        typealias Hint = KeyHintBar.Hint
+        var list: [Hint]
+        switch item.kind {
+        case .app, .file:
+            list = [Hint(key: "↩", label: "Open"), Hint(key: "⌘↩", label: "Show in Finder")]
+        case .folder:
+            list = [Hint(key: "↩", label: "Open"), Hint(key: "→", label: "Browse"), Hint(key: "⌘↩", label: "Show in Finder")]
+        case .searchTemplate:
+            list = [Hint(key: "space", label: "Type a search")]
+        case .webSearch:
+            list = [Hint(key: "↩", label: "Search")]
+        case .url:
+            list = [Hint(key: "↩", label: "Open Link")]
+        case .calculation:
+            list = [Hint(key: "↩", label: "Copy Result")]
+        case .action:
+            list = [Hint(key: "↩", label: "Run")]
+        }
+        let text = field.stringValue
+        if mode == .root, !text.isEmpty, !QueryEngine.isSticky(text), item.kind != .searchTemplate {
+            list.append(Hint(key: "⌥↩", label: "Always use for “\(text.prefix(12))”"))
+        }
+        hints.set(list)
+    }
+
     private func buildViews() {
         guard let content = panel.contentView else { return }
         panel.delegate = self
 
-        chip.font = .systemFont(ofSize: 13, weight: .semibold)
+        modeIcon.contentTintColor = .secondaryLabelColor
+        modeIcon.imageScaling = .scaleNone
+        modeIcon.setContentHuggingPriority(.required, for: .horizontal)
+        setModeIcon("magnifyingglass")
+
+        chip.font = .systemFont(ofSize: 13, weight: .medium)
         chip.textColor = .secondaryLabelColor
         chip.lineBreakMode = .byTruncatingHead
-        chip.setContentHuggingPriority(.required, for: .horizontal)
         chip.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        chip.isHidden = true
+        chip.translatesAutoresizingMaskIntoConstraints = false
+        chipPill.addSubview(chip)
+        chipPill.setContentHuggingPriority(.required, for: .horizontal)
+        chipPill.isHidden = true
 
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.font = .systemFont(ofSize: 24, weight: .regular)
-        field.placeholderString = "Quickbar"
+        field.font = .systemFont(ofSize: 22, weight: .regular)
+        field.placeholderString = Self.rootPlaceholder
         field.delegate = self
         field.cell?.usesSingleLineMode = true
         field.cell?.isScrollable = true
         field.cell?.wraps = false
 
-        let bar = NSStackView(views: [chip, field])
+        let bar = NSStackView(views: [modeIcon, chipPill, field])
         bar.orientation = .horizontal
         bar.alignment = .centerY
-        bar.spacing = 8
-        bar.edgeInsets = NSEdgeInsets(top: 0, left: 18, bottom: 0, right: 18)
+        bar.spacing = 10
+        bar.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 0, right: 18)
 
         separator.boxType = .separator
         separator.isHidden = true
+        footerSeparator.boxType = .separator
+        footerSeparator.isHidden = true
+        hints.isHidden = true
 
         table.dataSource = self
         table.delegate = self
         table.target = self
         table.doubleAction = #selector(rowDoubleClicked)
 
-        for v in [bar, separator, scroll] as [NSView] {
+        for v in [bar, separator, scroll, footerSeparator, hints] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(v)
         }
+        // With no rows the panel is only as tall as the bar, so the list's
+        // bottom edge has to give way.
+        let listBottom = scroll.bottomAnchor.constraint(equalTo: footerSeparator.topAnchor, constant: -Self.listPadding)
+        listBottom.priority = .defaultHigh
         NSLayoutConstraint.activate([
             bar.topAnchor.constraint(equalTo: content.topAnchor),
             bar.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             bar.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             bar.heightAnchor.constraint(equalToConstant: Self.barHeight),
+            chip.leadingAnchor.constraint(equalTo: chipPill.leadingAnchor, constant: 8),
+            chip.trailingAnchor.constraint(equalTo: chipPill.trailingAnchor, constant: -8),
+            chip.topAnchor.constraint(equalTo: chipPill.topAnchor, constant: 4),
+            chip.bottomAnchor.constraint(equalTo: chipPill.bottomAnchor, constant: -4),
             chip.widthAnchor.constraint(lessThanOrEqualToConstant: 260),
             separator.topAnchor.constraint(equalTo: bar.bottomAnchor),
             separator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
@@ -94,7 +151,14 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
             scroll.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: Self.listPadding),
             scroll.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -Self.listPadding),
+            listBottom,
+            footerSeparator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            footerSeparator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            footerSeparator.bottomAnchor.constraint(equalTo: hints.topAnchor),
+            hints.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            hints.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            hints.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            hints.heightAnchor.constraint(equalToConstant: Theme.footerHeight),
         ])
 
         panel.keyEquivalentHandler = { [weak self] event in self?.handleKeyEquivalent(event) ?? false }
@@ -147,15 +211,18 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         suggestClient.cancel()
         switch newMode {
         case .root:
-            chip.isHidden = true
-            field.placeholderString = "Quickbar"
+            chipPill.isHidden = true
+            setModeIcon("magnifyingglass")
+            field.placeholderString = Self.rootPlaceholder
         case .browse(let path):
-            chip.stringValue = PathDisplay.abbreviate(path) + "  ▸"
-            chip.isHidden = false
-            field.placeholderString = ""
+            chip.stringValue = PathDisplay.abbreviate(path)
+            chipPill.isHidden = false
+            setModeIcon("folder")
+            field.placeholderString = "Filter"
         case .text(let template):
-            chip.stringValue = template.name + "  ▸"
-            chip.isHidden = false
+            chip.stringValue = template.name
+            chipPill.isHidden = false
+            setModeIcon("magnifyingglass")
             field.placeholderString = "Search \(template.name)"
         }
         searchQueue.async { [engine] in engine.invalidateDirectoryCache() }
@@ -213,6 +280,8 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         rows = newRows
         table.reloadData()
         separator.isHidden = rows.isEmpty
+        footerSeparator.isHidden = rows.isEmpty
+        hints.isHidden = rows.isEmpty
         if !rows.isEmpty {
             let row = id.flatMap { id in rows.firstIndex { $0.id == id } } ?? 0
             select(row)
@@ -223,7 +292,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
     private func currentHeight() -> CGFloat {
         guard !rows.isEmpty else { return Self.barHeight }
         let visible = CGFloat(min(rows.count, Self.maxVisibleRows))
-        return Self.barHeight + 1 + visible * Self.rowHeight + 2 * Self.listPadding
+        return Self.barHeight + 1 + visible * Self.rowHeight + 2 * Self.listPadding + 1 + Theme.footerHeight
     }
 
     private var selectedItem: Item? {
@@ -234,6 +303,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         guard rows.indices.contains(row) else { return }
         table.selectRowIndexes([row], byExtendingSelection: false)
         table.scrollRowToVisible(row)
+        updateHints()
     }
 
     private func moveSelection(by delta: Int) {
@@ -483,6 +553,10 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
 
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
         ResultRowView()
+    }
+
+    func tableViewSelectionDidChange(_ notification: Notification) {
+        updateHints()
     }
 
     // MARK: - Debugging

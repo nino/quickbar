@@ -26,6 +26,9 @@ froze. Every change is judged against this first.
   (root / browse folder / search text). `QueryEngine` turns (mode, text) into
   rows on the search queue.
 - `Resources/Info.plist`, `scripts/` — bundle assembly. There is no Xcode project.
+  `Resources/AppIcon.icns` is drawn by `swift scripts/make-icon.swift`.
+- Shared look (`Theme`, `TintedBox`, `KeyHintBar`) lives in `PanelViews.swift`.
+  The footer hints must stay true to what the keys do for the selected row.
 - `PLAN.md` — stages and ideas not yet built.
 
 User data lives in `~/Library/Application Support/Quickbar/`
@@ -56,6 +59,8 @@ $B --script type:kagi "type:kagi " "type:swift conc" wait:1.5 --dump
 
 Steps: `type:<text>` sets the field as if typed; `key:<up|down|left|right|tab|return|backspace>`;
 `wait:<seconds>`. The blur behind the panel is not captured in snapshots.
+Add `--dark` to render in dark mode and `--clipboard` to snapshot the clipboard
+panel with sample entries. Look at both appearances after any visual change.
 
 What the harness cannot check: global hotkeys, focus, the retype timer's
 select-all, the clipboard panel's modifier-release commit, and the Settings

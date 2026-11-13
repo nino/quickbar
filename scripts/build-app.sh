@@ -12,6 +12,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN/Quickbar" "$APP/Contents/MacOS/Quickbar"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 # Sign with a stable identity when there is one: macOS ties privacy grants
 # (Documents, Desktop, clipboard) to the signature, and an ad-hoc signature

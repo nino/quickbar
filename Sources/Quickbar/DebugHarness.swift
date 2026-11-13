@@ -8,7 +8,8 @@ import QuickbarCore
 ///     Quickbar --bench
 ///
 /// Steps: `type:<text>`, `key:<up|down|left|right|tab|return|backspace>`, `wait:<seconds>`.
-/// `--dump` prints the rows; `--snapshot` renders the panel to a PNG.
+/// `--dump` prints the rows; `--snapshot` renders the panel to a PNG
+/// (`--dark` in dark mode, `--clipboard` the clipboard panel with sample entries).
 /// In this mode no hotkeys are registered and the clipboard is not watched.
 enum DebugHarness {
     private static let args = Array(CommandLine.arguments.dropFirst())
@@ -61,6 +62,7 @@ enum DebugHarness {
     private static func runScript() {
         guard let launcher, let start = args.firstIndex(of: "--script") else { exit(1) }
         let steps = args[(start + 1)...].prefix { !$0.hasPrefix("--") }
+        if args.contains("--dark") { NSApp.appearance = NSAppearance(named: .darkAqua) }
         launcher.panel.position(height: LauncherController.barHeight)
 
         var delay = 0.0
@@ -88,7 +90,15 @@ enum DebugHarness {
                 }
             }
             if let path = value(after: "--snapshot") {
-                snapshot(launcher.panel, to: path)
+                if args.contains("--clipboard"), let clipboard = AppDelegate.shared?.clipboardPanel {
+                    let texts = ["git commit --amend --no-edit", "https://kagi.com/search?q=swift+concurrency",
+                                 "func handleEvents(_ events: [(path: String, flags: FSEventStreamEventFlags)]) {\n    let relevant = events.contains { event in\n        event.flags & structural != 0\n    }\n}",
+                                 "Meeting moved to Thursday 15:00", "41e3175"]
+                    let sample = texts.enumerated().map { ClipboardEntry(text: $1, date: Date().addingTimeInterval(-Double($0 * $0) * 400)) }
+                    snapshot(clipboard.debugPresent(sample), to: path)
+                } else {
+                    snapshot(launcher.panel, to: path)
+                }
             }
             exit(0)
         }
@@ -114,8 +124,10 @@ enum DebugHarness {
         // The blur behind the panel is not captured; put a plain background under it.
         let image = NSImage(size: view.bounds.size)
         image.lockFocus()
-        NSColor.windowBackgroundColor.setFill()
-        view.bounds.fill()
+        view.effectiveAppearance.performAsCurrentDrawingAppearance {
+            NSColor.windowBackgroundColor.setFill()
+            view.bounds.fill()
+        }
         rep.draw(in: view.bounds)
         image.unlockFocus()
         guard let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff),

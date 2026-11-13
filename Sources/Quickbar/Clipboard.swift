@@ -102,20 +102,28 @@ final class ClipboardStore {
 /// the modifier puts the selected entry on the clipboard.
 final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSWindowDelegate {
     static let width: CGFloat = 560
-    static let rowHeight: CGFloat = 28
+    static let rowHeight: CGFloat = 30
     static let maxVisibleRows = 12
-    static let previewHeight: CGFloat = 96
+    static let previewHeight: CGFloat = 104
+    static let headerHeight: CGFloat = 34
 
     private let panel = FloatingPanel(size: NSSize(width: ClipboardPanelController.width, height: 200))
     private let table: ResultsTableView
     private let scroll: NSScrollView
     private let preview = NSTextField(wrappingLabelWithString: "")
     private let separator = NSBox()
+    private let headerSeparator = NSBox()
+    private let footerSeparator = NSBox()
+    private let header = NSTextField(labelWithString: "Clipboard History")
+    private let counter = NSTextField(labelWithString: "")
+    private let hints = KeyHintBar()
     private var entries: [ClipboardEntry] = []
     private var modifierTimer: Timer?
     private var heldModifiers: NSEvent.ModifierFlags = []
     private var sawModifiersHeld = false
     private var shownAt = Date.distantPast
+    /// Fixed while the panel is open so ages don't change under the cursor.
+    private var now = Date()
 
     override init() {
         (table, scroll) = NSTableView.makeResultsTable(rowHeight: Self.rowHeight)
@@ -127,29 +135,48 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
         table.target = self
         table.doubleAction = #selector(rowDoubleClicked)
 
-        separator.boxType = .separator
+        for box in [separator, headerSeparator, footerSeparator] { box.boxType = .separator }
+        header.font = .systemFont(ofSize: 12, weight: .semibold)
+        header.textColor = .secondaryLabelColor
+        counter.font = .monospacedDigitSystemFont(ofSize: 11.5, weight: .regular)
+        counter.textColor = .tertiaryLabelColor
         preview.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         preview.textColor = .secondaryLabelColor
         preview.maximumNumberOfLines = 6
         preview.lineBreakMode = .byTruncatingTail
         preview.cell?.truncatesLastVisibleLine = true
 
-        for v in [scroll, separator, preview] as [NSView] {
+        for v in [header, counter, headerSeparator, scroll, separator, preview, footerSeparator, hints] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(v)
         }
+        let inset = Theme.selectionInset + 10
         NSLayoutConstraint.activate([
-            scroll.topAnchor.constraint(equalTo: content.topAnchor, constant: 6),
+            header.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: inset),
+            header.centerYAnchor.constraint(equalTo: content.topAnchor, constant: Self.headerHeight / 2),
+            counter.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -inset),
+            counter.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            headerSeparator.topAnchor.constraint(equalTo: content.topAnchor, constant: Self.headerHeight),
+            headerSeparator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            headerSeparator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            scroll.topAnchor.constraint(equalTo: headerSeparator.bottomAnchor, constant: 6),
             scroll.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             scroll.bottomAnchor.constraint(equalTo: separator.topAnchor, constant: -6),
             separator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            separator.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -Self.previewHeight),
-            preview.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 8),
-            preview.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 16),
-            preview.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -16),
-            preview.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -8),
+            separator.bottomAnchor.constraint(equalTo: footerSeparator.topAnchor, constant: -Self.previewHeight),
+            preview.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 10),
+            preview.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: inset),
+            preview.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -inset),
+            preview.bottomAnchor.constraint(lessThanOrEqualTo: footerSeparator.topAnchor, constant: -8),
+            footerSeparator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            footerSeparator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            footerSeparator.bottomAnchor.constraint(equalTo: hints.topAnchor),
+            hints.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            hints.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            hints.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            hints.heightAnchor.constraint(equalToConstant: Theme.footerHeight),
         ])
 
         panel.keyDownHandler = { [weak self] event in self?.handleKey(event) ?? false }
@@ -171,16 +198,47 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
             NSSound.beep()
             return
         }
-        table.reloadData()
-        // Entry 0 is what is already on the clipboard, so start at the one before it.
-        select(reverse ? entries.count - 1 : min(1, entries.count - 1))
-
-        let rows = CGFloat(min(entries.count, Self.maxVisibleRows))
-        panel.position(height: rows * Self.rowHeight + 12 + 1 + Self.previewHeight)
+        present(selecting: reverse ? entries.count - 1 : min(1, entries.count - 1))
+        // While the modifier is held, releasing it commits; after a tap, Enter does.
+        hints.set(modifiers.isEmpty ? Self.openHints : Self.heldHints(Self.symbols(for: modifiers)))
         panel.makeKeyAndOrderFront(nil)
         shownAt = Date()
         Log.debug("clipboard: shown with \(entries.count) entries, row \(table.selectedRow), key=\(panel.isKeyWindow)")
         startWatching(modifiers.subtracting(.shift))
+    }
+
+    private static let openHints: [KeyHintBar.Hint] = [
+        .init(key: "↩", label: "Copy"), .init(key: "⌫", label: "Delete"), .init(key: "esc", label: "Close"),
+    ]
+
+    private static func symbols(for flags: NSEvent.ModifierFlags) -> String {
+        var out = ""
+        if flags.contains(.control) { out += "⌃" }
+        if flags.contains(.option) { out += "⌥" }
+        if flags.contains(.command) { out += "⌘" }
+        return out
+    }
+
+    private static func heldHints(_ modifier: String) -> [KeyHintBar.Hint] {
+        [.init(key: "release \(modifier)", label: "Copy"), .init(key: "⌫", label: "Delete"), .init(key: "esc", label: "Cancel")]
+    }
+
+    /// Lays the list out for the current `entries` and sizes the panel.
+    private func present(selecting row: Int) {
+        now = Date()
+        table.reloadData()
+        // Entry 0 is what is already on the clipboard, so callers start at the one before it.
+        select(row)
+        let rows = CGFloat(min(entries.count, Self.maxVisibleRows))
+        panel.position(height: Self.headerHeight + 1 + rows * Self.rowHeight + 12 + 1 + Self.previewHeight + 1 + Theme.footerHeight)
+    }
+
+    /// Renders the panel with made-up entries, for snapshots.
+    func debugPresent(_ sample: [ClipboardEntry]) -> NSPanel {
+        entries = sample
+        present(selecting: min(1, sample.count - 1))
+        hints.set(Self.heldHints("⌘"))
+        return panel
     }
 
     private func startWatching(_ modifiers: NSEvent.ModifierFlags) {
@@ -204,6 +262,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
             // and let Enter / Escape decide.
             Log.debug("clipboard: modifiers never seen held, staying open")
             modifierTimer?.invalidate()
+            hints.set(Self.openHints)
         }
     }
 
@@ -212,6 +271,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
         table.selectRowIndexes([row], byExtendingSelection: false)
         table.scrollRowToVisible(row)
         preview.stringValue = String(entries[row].text.prefix(2000))
+        counter.stringValue = "\(row + 1) of \(entries.count)"
     }
 
     private func move(by delta: Int, wrap: Bool) {
@@ -275,6 +335,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
         let id = NSUserInterfaceItemIdentifier("ClipCell")
         let cell = tableView.makeView(withIdentifier: id, owner: nil) as? ClipboardCell ?? ClipboardCell(identifier: id)
         cell.label.stringValue = entries[row].preview
+        cell.age.stringValue = row == 0 ? "current" : Self.age(of: entries[row].date, now: now)
         return cell
     }
 
@@ -285,30 +346,56 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
     func tableViewSelectionDidChange(_ notification: Notification) {
         if entries.indices.contains(table.selectedRow) {
             preview.stringValue = String(entries[table.selectedRow].text.prefix(2000))
+            counter.stringValue = "\(table.selectedRow + 1) of \(entries.count)"
+        }
+    }
+
+    private static func age(of date: Date, now: Date) -> String {
+        let seconds = max(0, Int(now.timeIntervalSince(date)))
+        switch seconds {
+        case ..<60: return "now"
+        case ..<3600: return "\(seconds / 60)m"
+        case ..<86400: return "\(seconds / 3600)h"
+        default: return "\(seconds / 86400)d"
         }
     }
 }
 
 final class ClipboardCell: NSTableCellView {
     let label = NSTextField(labelWithString: "")
+    let age = NSTextField(labelWithString: "")
 
     init(identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
         label.font = .systemFont(ofSize: 13)
         label.lineBreakMode = .byTruncatingTail
-        label.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(label)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        age.font = .monospacedDigitSystemFont(ofSize: 11.5, weight: .regular)
+        age.alignment = .right
+        age.setContentHuggingPriority(.required, for: .horizontal)
+        age.setContentCompressionResistancePriority(.required, for: .horizontal)
+        for v in [label, age] {
+            v.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(v)
+        }
+        let inset = Theme.selectionInset + 10
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: inset),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: age.leadingAnchor, constant: -12),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            age.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -inset),
+            age.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
     override var backgroundStyle: NSView.BackgroundStyle {
-        didSet { label.textColor = backgroundStyle == .emphasized ? .white : .labelColor }
+        didSet {
+            let selected = backgroundStyle == .emphasized
+            label.textColor = selected ? .white : .labelColor
+            age.textColor = selected ? NSColor.white.withAlphaComponent(0.75) : .tertiaryLabelColor
+        }
     }
 }
