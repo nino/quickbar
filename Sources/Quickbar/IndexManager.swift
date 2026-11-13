@@ -98,29 +98,39 @@ final class IndexManager {
         var context = FSEventStreamContext(
             version: 0, info: Unmanaged.passUnretained(self).toOpaque(),
             retain: nil, release: nil, copyDescription: nil)
-        let callback: FSEventStreamCallback = { _, info, count, paths, _, _ in
+        let callback: FSEventStreamCallback = { _, info, count, paths, flags, _ in
             guard let info, let array = unsafeBitCast(paths, to: NSArray.self) as? [String] else { return }
-            Unmanaged<IndexManager>.fromOpaque(info).takeUnretainedValue().handleEvents(Array(array.prefix(count)))
+            let events = zip(array.prefix(count), UnsafeBufferPointer(start: flags, count: count)).map { ($0, $1) }
+            Unmanaged<IndexManager>.fromOpaque(info).takeUnretainedValue().handleEvents(events)
         }
         guard let stream = FSEventStreamCreate(
             nil, callback, &context, watched.map(\.path) as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 2.0,
-            FSEventStreamCreateFlags(kFSEventStreamCreateFlagUseCFTypes))
+            FSEventStreamCreateFlags(kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents))
         else { return }
         FSEventStreamSetDispatchQueue(stream, queue)
         FSEventStreamStart(stream)
         self.stream = stream
     }
 
-    /// FSEvents reports whole subtrees; only changes within the indexed depth matter.
-    private func handleEvents(_ paths: [String]) {
-        let relevant = paths.contains { path in
-            let dir = path.hasSuffix("/") ? String(path.dropLast()) : path
+    /// Only events that add, remove or rename something the scanner would index
+    /// matter. Without this filter, programs rewriting dotfiles in the home
+    /// folder caused a full rescan every few seconds.
+    private func handleEvents(_ events: [(path: String, flags: FSEventStreamEventFlags)]) {
+        let structural = FSEventStreamEventFlags(
+            kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRemoved
+                | kFSEventStreamEventFlagItemRenamed | kFSEventStreamEventFlagMustScanSubDirs
+                | kFSEventStreamEventFlagRootChanged)
+        let excluded = Set(config.excludedNames)
+        let relevant = events.contains { event in
+            guard event.flags & structural != 0 else { return false }
+            let path = event.path.hasSuffix("/") ? String(event.path.dropLast()) : event.path
             return watched.contains { root in
-                if dir == root.path { return true }
-                guard dir.hasPrefix(root.path + "/") else { return false }
-                let levelsBelowRoot = dir.dropFirst(root.path.count + 1).split(separator: "/").count
-                return levelsBelowRoot < root.depth
+                if path == root.path { return true }
+                guard path.hasPrefix(root.path + "/") else { return false }
+                let parts = path.dropFirst(root.path.count + 1).split(separator: "/")
+                return parts.count <= root.depth
+                    && !parts.contains { $0.hasPrefix(".") || excluded.contains(String($0)) }
             }
         }
         guard relevant, !rebuildPending else { return }
