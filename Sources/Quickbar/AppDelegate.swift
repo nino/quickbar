@@ -58,7 +58,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    /// True while Settings is recording a shortcut.
+    private var hotKeysSuspended = false
+
     func registerHotKeys() {
+        hotKeysSuspended = false
         let config = ConfigStore.shared.config
         let center = HotKeyCenter.shared
         center.unregisterAll()
@@ -72,17 +76,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.launcher.hide()
             self?.clipboardPanel.hotKeyPressed(reverse: false, modifiers: modifiers)
         }
-        if !clip.modifiers.contains("shift") {
+        // The backwards hotkey (with shift) is registered only while the list is
+        // open: a registered hotkey swallows the key everywhere, and it has no
+        // job when there is nothing to step back through.
+        clipboardPanel.onVisibilityChange = { [weak self] visible in
+            guard let self else { return }
+            let clip = ConfigStore.shared.config.clipboardHotKey
+            guard visible, !self.hotKeysSuspended, !clip.modifiers.contains("shift") else {
+                center.unregister(id: HotKeyID.clipboardReverse)
+                return
+            }
             var reverse = clip
             reverse.modifiers.append("shift")
+            let modifiers = HotKeyCenter.cocoaModifiers(clip.modifiers)
             center.register(id: HotKeyID.clipboardReverse, spec: reverse) { [weak self] in
-                self?.launcher.hide()
                 self?.clipboardPanel.hotKeyPressed(reverse: true, modifiers: modifiers)
             }
         }
+        clipboardPanel.onVisibilityChange?(clipboardPanel.isVisible)
     }
 
     func suspendHotKeys() {
+        hotKeysSuspended = true
         HotKeyCenter.shared.unregisterAll()
     }
 

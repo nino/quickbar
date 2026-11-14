@@ -61,7 +61,7 @@ Text (with its formatting), images and copied files are kept (100 entries by
 default). Images are stored as PNG, up to 32 MB each and 512 MB in total;
 for files only the location is remembered. Hold ⌘ and press
 `\` repeatedly to step back through older entries; release ⌘ and the selected
-one is on the clipboard. ⌘⇧\ steps the other way. If you tap and release
+one is on the clipboard. ⌘⇧\ steps the other way while the list is open (when it is closed, that key is left to other apps). If you tap and release
 quickly the list stays open: ↑ ↓ to choose, ↩ to take, ⌫ to delete an entry,
 Esc to cancel. Images and files show a thumbnail. Entries marked as secrets
 by password managers are skipped.

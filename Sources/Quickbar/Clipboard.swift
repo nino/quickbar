@@ -393,6 +393,10 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
 
     var isVisible: Bool { panel.isVisible }
 
+    /// Called when the panel opens (true) and closes (false). The backwards
+    /// hotkey is only claimed in between, so other apps get that key otherwise.
+    var onVisibilityChange: ((Bool) -> Void)?
+
     /// Called for every press of the clipboard hotkey.
     /// `modifiers` are the hotkey's own, watched for release; pass [] to open
     /// the panel in "stay open" mode (from the launcher).
@@ -402,16 +406,19 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
             Log.debug("clipboard: hotkey while open, row \(table.selectedRow)")
             return
         }
+        // Backwards only steps through an open list; it never opens one.
+        if reverse { return }
         entries = ClipboardStore.shared.entries
         guard !entries.isEmpty else {
             NSSound.beep()
             return
         }
-        present(selecting: reverse ? entries.count - 1 : min(1, entries.count - 1))
+        present(selecting: min(1, entries.count - 1))
         // While the modifier is held, releasing it commits; after a tap, Enter does.
         hints.set(modifiers.isEmpty ? Self.openHints : Self.heldHints(Self.symbols(for: modifiers)))
         panel.makeKeyAndOrderFront(nil)
         shownAt = Date()
+        onVisibilityChange?(true)
         Log.debug("clipboard: shown with \(entries.count) entries, row \(table.selectedRow), key=\(panel.isKeyWindow)")
         startWatching(modifiers.subtracting(.shift))
     }
@@ -546,7 +553,9 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
     func hide() {
         modifierTimer?.invalidate()
         modifierTimer = nil
-        if panel.isVisible { panel.orderOut(nil) }
+        guard panel.isVisible else { return }
+        panel.orderOut(nil)
+        onVisibilityChange?(false)
     }
 
     func windowDidResignKey(_ notification: Notification) {
