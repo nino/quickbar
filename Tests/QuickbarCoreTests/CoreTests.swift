@@ -388,3 +388,28 @@ private func app(_ name: String) -> Item {
         #expect(image("x").preview == "Image  640 × 480")
     }
 }
+
+@Suite struct AppLinkTests {
+    @Test func linksToAppsOutsideTheScanAreIndexed() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("quickbar-links-\(UUID().uuidString)").resolvingSymlinksInPath()
+        defer { try? fm.removeItem(at: root) }
+        let apps = root.appendingPathComponent("Applications")
+        let hidden = root.appendingPathComponent("Elsewhere/Deep/Real Tool.app")
+        let plain = apps.appendingPathComponent("Plain.app")
+        for dir in [hidden, plain, apps.appendingPathComponent("Vendor")] {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+        // One link to an app the scan cannot reach, one to an app it finds anyway.
+        try fm.createSymbolicLink(at: apps.appendingPathComponent("Vendor/Tool"), withDestinationURL: hidden)
+        try fm.createSymbolicLink(at: apps.appendingPathComponent("Vendor/Plain Again"), withDestinationURL: plain)
+        try fm.createSymbolicLink(at: apps.appendingPathComponent("Vendor/Broken"), withDestinationURL: root.appendingPathComponent("Gone.app"))
+
+        let items = FileScanner.scanApplications(in: [apps.path]).filter { $0.id.contains(root.lastPathComponent) }
+        #expect(Set(items.map(\.title)) == ["Plain", "Tool"], "\(items.map { "\($0.id) -> \($0.path ?? "")" })")
+        let tool = try #require(items.first { $0.title == "Tool" })
+        #expect(tool.kind == .app)
+        #expect(tool.id.hasSuffix("Applications/Vendor/Tool"))
+        #expect(tool.path?.hasSuffix("Elsewhere/Deep/Real Tool.app") == true)
+    }
+}

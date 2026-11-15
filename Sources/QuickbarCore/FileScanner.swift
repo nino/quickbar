@@ -27,14 +27,32 @@ public enum FileScanner {
         return Item(id: path, title: url.lastPathComponent, subtitle: parent, kind: kind, path: path)
     }
 
+    /// A symlink or Finder alias that points at an application, as some
+    /// installers leave in /Applications while the app itself sits deeper
+    /// (Adobe Creative Cloud). It is named as Finder shows it, keeps the link's
+    /// path as its id, and opens and takes its icon from the real app.
+    static func appLink(at url: URL) -> Item? {
+        guard (try? url.resourceValues(forKeys: [.isAliasFileKey]))?.isAliasFile == true,
+              let target = try? URL(resolvingAliasFileAt: url, options: [.withoutUI, .withoutMounting]),
+              target.pathExtension == "app",
+              FileManager.default.fileExists(atPath: target.path)
+        else { return nil }
+        return Item(id: url.path, title: url.deletingPathExtension().lastPathComponent,
+                    subtitle: PathDisplay.abbreviate(url.deletingLastPathComponent().path),
+                    kind: .app, path: target.path)
+    }
+
     /// Applications in `directories`, looking up to two levels into plain subfolders
     /// (e.g. /Applications/Utilities).
     public static func scanApplications(in directories: [String]) -> [Item] {
         var items = [Item]()
+        var links = [Item]()
         func visit(_ url: URL, level: Int) {
             for child in children(of: url) {
                 if child.pathExtension == "app" {
                     items.append(makeItem(for: child))
+                } else if let link = appLink(at: child) {
+                    links.append(link)
                 } else if level < 2,
                           (try? child.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey]))
                               .map({ $0.isDirectory == true && $0.isPackage != true }) == true {
@@ -44,6 +62,14 @@ public enum FileScanner {
         }
         for dir in directories {
             visit(URL(fileURLWithPath: PathDisplay.expand(dir), isDirectory: true), level: 0)
+        }
+        // A link is only worth a row when the app it points to was not found itself.
+        // Compared by real location, so a link reached through another link still matches.
+        func real(_ path: String) -> String { URL(fileURLWithPath: path).resolvingSymlinksInPath().path }
+        var seen = links.isEmpty ? [] : Set(items.compactMap(\.path).map(real))
+        for link in links {
+            guard let target = link.path, seen.insert(real(target)).inserted else { continue }
+            items.append(link)
         }
         // Finder lives outside the usual application folders.
         let finder = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
