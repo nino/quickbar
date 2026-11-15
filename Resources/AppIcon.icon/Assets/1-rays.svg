@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 100 824 824" width="1024" height="1024">
+<defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF6C4"/><stop offset=".3" stop-color="#FFD24A"/><stop offset=".55" stop-color="#C98A0A"/><stop offset=".75" stop-color="#FFE27A"/><stop offset="1" stop-color="#9A5F00"/></linearGradient>
+<linearGradient id="gold2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE98A"/><stop offset="1" stop-color="#A86A00"/></linearGradient>
+<radialGradient id="shine"><stop offset="0" stop-color="#FFD24A" stop-opacity=".5"/><stop offset="1" stop-color="#FFD24A" stop-opacity="0"/></radialGradient></defs>
+<clipPath id="in"><rect x="126" y="126" width="772" height="772" rx="162"/></clipPath>
+<g clip-path="url(#in)">
+<polygon points="510.5,392.0 476.0,-207.1 548.0,-207.1 513.5,392.0" fill="url(#gold2)" opacity="1"/>
+<polygon points="547.7,397.4 700.0,-183.0 768.4,-160.8 550.5,398.3" fill="url(#gold2)" opacity="0.7"/>
+<polygon points="581.3,414.0 905.6,-90.9 963.8,-48.6 583.7,415.8" fill="url(#gold2)" opacity="1"/>
+<polygon points="608.2,440.3 1072.6,60.2 1114.9,118.4 610.0,442.7" fill="url(#gold2)" opacity="0.7"/>
+<polygon points="625.7,473.5 1184.8,255.6 1207.0,324.0 626.6,476.3" fill="url(#gold2)" opacity="1"/>
+<polygon points="632.0,510.5 1231.1,476.0 1231.1,548.0 632.0,513.5" fill="url(#gold2)" opacity="0.7"/>
+<polygon points="626.6,547.7 1207.0,700.0 1184.8,768.4 625.7,550.5" fill="url(#gold2)" opacity="1"/>
+<polygon points="610.0,581.3 1114.9,905.6 1072.6,963.8 608.2,583.7" fill="url(#gold2)" opacity="0.7"/>
+<polygon points="583.7,608.2 963.8,1072.6 905.6,1114.9 581.3,610.0" fill="url(#gold2)" opacity="1"/>
+<polygon points="550.5,625.7 768.4,1184.8 700.0,1207.0 547.7,626.6" fill="url(#gold2)" opacity="0.7"/>
+<polygon points="513.5,632.0 548.0,1231.1 476.0,1231.1 510.5,632.0" fill="url(#gold2)" opacity="1"/>
+<polygon points="476.3,626.6 324.0,1207.0 255.6,1184.8 473.5,625.7" fill="url(#gold2)" opacity="0.7"/>
+<polygon points="442.7,610.0 118.4,1114.9 60.2,1072.6 440.3,608.2" fill="url(#gold2)" opacity="1"/>
+<polygon points="415.8,583.7 -48.6,963.8 -90.9,905.6 414.0,581.3" fill="url(#gold2)" opacity="0.7"/>
+<polygon points="398.3,550.5 -160.8,768.4 -183.0,700.0 397.4,547.7" fill="url(#gold2)" opacity="1"/>
+<polygon points="392.0,513.5 -207.1,548.0 -207.1,476.0 392.0,510.5" fill="url(#gold2)" opacity="0.7"/>
+<polygon points="397.4,476.3 -183.0,324.0 -160.8,255.6 398.3,473.5" fill="url(#gold2)" opacity="1"/>
+<polygon points="414.0,442.7 -90.9,118.4 -48.6,60.2 415.8,440.3" fill="url(#gold2)" opacity="0.7"/>
+<polygon points="440.3,415.8 60.2,-48.6 118.4,-90.9 442.7,414.0" fill="url(#gold2)" opacity="1"/>
+<polygon points="473.5,398.3 255.6,-160.8 324.0,-183.0 476.3,397.4" fill="url(#gold2)" opacity="0.7"/>
+<circle cx="512" cy="512" r="340" fill="url(#shine)"/>
+</g>
+</svg>

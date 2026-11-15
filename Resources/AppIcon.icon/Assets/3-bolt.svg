@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 100 824 824" width="1024" height="1024">
+<defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF6C4"/><stop offset=".3" stop-color="#FFD24A"/><stop offset=".55" stop-color="#C98A0A"/><stop offset=".75" stop-color="#FFE27A"/><stop offset="1" stop-color="#9A5F00"/></linearGradient>
+<linearGradient id="gold2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE98A"/><stop offset="1" stop-color="#A86A00"/></linearGradient>
+<radialGradient id="shine"><stop offset="0" stop-color="#FFD24A" stop-opacity=".5"/><stop offset="1" stop-color="#FFD24A" stop-opacity="0"/></radialGradient></defs>
+<polygon points="522.5,133.5 279.5,538.5 453.5,538.5 339.5,898.5 747.5,397.5 549.5,397.5 669.5,133.5" fill="url(#gold)" stroke="#FFF6C4" stroke-width="6" stroke-linejoin="round"/>
+</svg>
