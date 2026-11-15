@@ -21,7 +21,8 @@ they lack the blur and shadow of the real window.
 scripts/install.sh
 ```
 
-Builds, copies to `/Applications/Quickbar.app` and starts it. Turn on
+Builds, copies to `/Applications/Quickbar.app` (or `~/Applications/Quickbar.app`
+if you are not an admin) and starts it. Turn on
 **Launch at login** in Settings.
 
 ## Using it

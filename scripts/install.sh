@@ -1,11 +1,20 @@
 #!/bin/bash
-# Builds Quickbar, installs it to /Applications and (re)starts it.
+# Builds Quickbar, installs it and (re)starts it. Admins get /Applications;
+# other users can't write there, so they get ~/Applications.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+if id -Gn | tr ' ' '\n' | grep -qx admin; then
+    dest_dir=/Applications
+else
+    dest_dir="$HOME/Applications"
+fi
+dest="$dest_dir/Quickbar.app"
+
 scripts/build-app.sh release
 pkill -x Quickbar 2>/dev/null && sleep 0.5 || true
-rm -rf /Applications/Quickbar.app
-cp -R build/Quickbar.app /Applications/Quickbar.app
-open /Applications/Quickbar.app
-echo "Installed and started /Applications/Quickbar.app"
+mkdir -p "$dest_dir"
+rm -rf "$dest"
+cp -R build/Quickbar.app "$dest"
+open "$dest"
+echo "Installed and started $dest"
