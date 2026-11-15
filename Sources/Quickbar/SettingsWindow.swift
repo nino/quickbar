@@ -254,6 +254,8 @@ private struct FoldersTab: View {
                         Spacer()
                         Text(folder.depth == 1 ? "1 level" : "\(folder.depth) levels")
                             .monospacedDigit().foregroundStyle(.secondary)
+                            // The path truncates to make room; this label must never wrap.
+                            .lineLimit(1).fixedSize()
                         Stepper("Depth", value: $folder.depth, in: 1...6).labelsHidden()
                         Button(role: .destructive) {
                             store.config.folders.removeAll { $0.path == folder.path }
