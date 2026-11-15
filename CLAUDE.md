@@ -27,7 +27,8 @@ froze. Every change is judged against this first.
   (root / browse folder / search text). `QueryEngine` turns (mode, text) into
   rows on the search queue.
 - `Resources/Info.plist`, `scripts/` — bundle assembly. There is no Xcode project.
-  `Resources/AppIcon.icns` is drawn by `swift scripts/make-icon.swift`.
+  `Resources/AppIcon.icns` is drawn by `python3 scripts/make-icon.py`
+  (needs `rsvg-convert`; only for redrawing, the `.icns` is checked in).
 - Shared look (`Theme`, `TintedBox`, `KeyHintBar`) lives in `PanelViews.swift`.
   The footer hints must stay true to what the keys do for the selected row.
 - `PLAN.md` — stages and ideas not yet built.
