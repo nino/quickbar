@@ -2,7 +2,7 @@
 <defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF6C4"/><stop offset=".3" stop-color="#FFD24A"/><stop offset=".55" stop-color="#C98A0A"/><stop offset=".75" stop-color="#FFE27A"/><stop offset="1" stop-color="#9A5F00"/></linearGradient>
 <linearGradient id="gold2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE98A"/><stop offset="1" stop-color="#A86A00"/></linearGradient>
 <radialGradient id="shine"><stop offset="0" stop-color="#FFD24A" stop-opacity=".5"/><stop offset="1" stop-color="#FFD24A" stop-opacity="0"/></radialGradient></defs>
-<clipPath id="in"><rect x="126" y="126" width="772" height="772" rx="162"/></clipPath>
+<clipPath id="in"><path transform="translate(512,512) scale(0.937) translate(-512,-512) translate(100,100) scale(0.40234375) translate(0,2048) scale(0.1,-0.1)" d="M6430 20474 c-36 -2 -195 -8 -355 -14 -1518 -57 -2270 -179 -2993 -489 -1123 -481 -2092 -1450 -2573 -2573 -310 -725 -419 -1389 -491 -2993 -19 -422 -19 -7908 0 -8330 64 -1435 138 -1974 362 -2645 468 -1406 1644 -2582 3050 -3050 671 -224 1210 -298 2645 -362 422 -19 7908 -19 8330 0 1435 64 1974 138 2645 362 1406 468 2582 1644 3050 3050 224 671 298 1210 362 2645 19 422 19 7908 0 8330 -90 2015 -279 2809 -887 3730 -691 1046 -1739 1790 -2935 2084 -549 135 -943 180 -2090 238 -291 15 -7817 30 -8120 17z" /></clipPath>
 <g clip-path="url(#in)">
 <polygon points="510.5,392.0 476.0,-207.1 548.0,-207.1 513.5,392.0" fill="url(#gold2)" opacity="1"/>
 <polygon points="547.7,397.4 700.0,-183.0 768.4,-160.8 550.5,398.3" fill="url(#gold2)" opacity="0.7"/>
