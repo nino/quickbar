@@ -3,7 +3,7 @@
 A small, fast launcher for macOS, built to replace the handful of LaunchBar
 features I actually use. Native Swift, no dependencies.
 
-<img src="docs/screenshots/launcher.png" width="680" alt="Quickbar showing results for “term”, with matched letters in bold and key hints in the footer">
+<img src="docs/screenshots/launcher.png" width="600" alt="Quickbar showing results for “term”, with matched letters in bold and key hints in the footer">
 
 | | |
 |---|---|

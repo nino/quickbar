@@ -105,7 +105,7 @@ final class ResultRowView: NSTableRowView {
 
     override func drawSelection(in dirtyRect: NSRect) {
         NSColor.controlAccentColor.setFill()
-        NSBezierPath(roundedRect: bounds.insetBy(dx: Theme.selectionInset, dy: 1), xRadius: 9, yRadius: 9).fill()
+        NSBezierPath(roundedRect: bounds.insetBy(dx: Theme.selectionInset, dy: 1), xRadius: Theme.selectionRadius, yRadius: Theme.selectionRadius).fill()
     }
 }
 
@@ -116,13 +116,11 @@ final class ResultCell: NSTableCellView {
     private let title = NSTextField(labelWithString: "")
     private let subtitle = NSTextField(labelWithString: "")
     private let detail = NSTextField(labelWithString: "")
-    private var titleCenterY: NSLayoutConstraint!
-    private var titleTop: NSLayoutConstraint!
     private(set) var itemID = ""
     private var titleText = ""
     private var titleHighlights: [Range<Int>] = []
-    private static let titleFont = NSFont.systemFont(ofSize: 15, weight: .regular)
-    private static let matchFont = NSFont.systemFont(ofSize: 15, weight: .bold)
+    private static let titleFont = NSFont.systemFont(ofSize: 13, weight: .regular)
+    private static let matchFont = NSFont.systemFont(ofSize: 13, weight: .bold)
     private static let titleParagraph: NSParagraphStyle = {
         let style = NSMutableParagraphStyle()
         style.lineBreakMode = .byTruncatingTail
@@ -132,37 +130,38 @@ final class ResultCell: NSTableCellView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         identifier = Self.identifier
-        // Symbols keep their own size; file icons are already rasterized at 32 pt.
+        // Symbols keep their own size; file icons are already rasterized at row size.
         icon.imageScaling = .scaleProportionallyDown
         title.font = Self.titleFont
         title.lineBreakMode = .byTruncatingTail
-        subtitle.font = .systemFont(ofSize: 11.5)
+        subtitle.font = .systemFont(ofSize: 11)
         subtitle.lineBreakMode = .byTruncatingMiddle
-        detail.font = .systemFont(ofSize: 11.5)
+        detail.font = .systemFont(ofSize: 11)
         detail.alignment = .right
         detail.setContentHuggingPriority(.required, for: .horizontal)
         detail.setContentCompressionResistancePriority(.required, for: .horizontal)
+        // One line per row: the name, then where it is. The location gives way first.
+        title.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        subtitle.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        subtitle.setContentCompressionResistancePriority(.defaultLow - 1, for: .horizontal)
         for v in [icon, title, subtitle, detail] {
             v.translatesAutoresizingMaskIntoConstraints = false
             addSubview(v)
         }
-        titleCenterY = title.centerYAnchor.constraint(equalTo: centerYAnchor)
-        titleTop = title.topAnchor.constraint(equalTo: topAnchor, constant: 6)
-        let inset = Theme.selectionInset + 10
+        let inset = Theme.contentInset
         NSLayoutConstraint.activate([
             icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: inset),
             icon.centerYAnchor.constraint(equalTo: centerYAnchor),
             icon.widthAnchor.constraint(equalToConstant: IconCache.pointSize),
             icon.heightAnchor.constraint(equalToConstant: IconCache.pointSize),
-            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 12),
-            title.trailingAnchor.constraint(lessThanOrEqualTo: detail.leadingAnchor, constant: -12),
-            subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            subtitle.trailingAnchor.constraint(lessThanOrEqualTo: detail.leadingAnchor, constant: -12),
-            subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 1),
-            detail.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -(inset + 4)),
-            detail.centerYAnchor.constraint(equalTo: centerYAnchor),
+            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 8),
+            title.centerYAnchor.constraint(equalTo: centerYAnchor),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: detail.leadingAnchor, constant: -10),
+            subtitle.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 8),
+            subtitle.firstBaselineAnchor.constraint(equalTo: title.firstBaselineAnchor),
+            subtitle.trailingAnchor.constraint(lessThanOrEqualTo: detail.leadingAnchor, constant: -10),
+            detail.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -inset),
+            detail.firstBaselineAnchor.constraint(equalTo: title.firstBaselineAnchor),
         ])
         applyColors()
     }
@@ -233,10 +232,6 @@ final class ResultCell: NSTableCellView {
         renderTitle(selected: backgroundStyle == .emphasized)
         subtitle.stringValue = item.subtitle
         detail.stringValue = Self.kindLabel(for: item)
-        let hasSubtitle = !item.subtitle.isEmpty
-        subtitle.isHidden = !hasSubtitle
-        titleCenterY.isActive = !hasSubtitle
-        titleTop.isActive = hasSubtitle
 
         if let image = IconCache.shared.immediate(for: item) {
             icon.image = image
@@ -253,10 +248,15 @@ final class ResultCell: NSTableCellView {
 // MARK: - Shared chrome
 
 enum Theme {
-    static let cornerRadius: CGFloat = 16
+    // Dense on purpose, after the old Spotlight menu and LaunchBar: small
+    // single-line rows, so more results fit and the eye travels less.
+    static let cornerRadius: CGFloat = 10
     /// Gap between the panel edge and the selection highlight.
-    static let selectionInset: CGFloat = 8
-    static let footerHeight: CGFloat = 30
+    static let selectionInset: CGFloat = 5
+    static let selectionRadius: CGFloat = 5
+    /// Where row content, headers and footer hints start, from the panel edge.
+    static let contentInset: CGFloat = selectionInset + 7
+    static let footerHeight: CGFloat = 22
 }
 
 /// A rounded, tinted rectangle whose colours follow light/dark changes.
@@ -302,29 +302,29 @@ final class KeyHintBar: NSView {
     }
 
     private final class Slot {
-        let cap = TintedBox(fill: NSColor.labelColor.withAlphaComponent(0.09), radius: 4)
+        let cap = TintedBox(fill: NSColor.labelColor.withAlphaComponent(0.09), radius: 3)
         let key = NSTextField(labelWithString: "")
         let label = NSTextField(labelWithString: "")
         let view = NSStackView()
 
         init() {
-            key.font = .systemFont(ofSize: 11, weight: .medium)
+            key.font = .systemFont(ofSize: 10, weight: .medium)
             key.textColor = .secondaryLabelColor
             key.alignment = .center
             key.translatesAutoresizingMaskIntoConstraints = false
             cap.translatesAutoresizingMaskIntoConstraints = false
             cap.addSubview(key)
-            label.font = .systemFont(ofSize: 11.5)
+            label.font = .systemFont(ofSize: 10.5)
             label.textColor = .secondaryLabelColor
             NSLayoutConstraint.activate([
-                key.leadingAnchor.constraint(equalTo: cap.leadingAnchor, constant: 5),
-                key.trailingAnchor.constraint(equalTo: cap.trailingAnchor, constant: -5),
+                key.leadingAnchor.constraint(equalTo: cap.leadingAnchor, constant: 4),
+                key.trailingAnchor.constraint(equalTo: cap.trailingAnchor, constant: -4),
                 key.centerYAnchor.constraint(equalTo: cap.centerYAnchor),
-                cap.heightAnchor.constraint(equalToConstant: 18),
-                cap.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
+                cap.heightAnchor.constraint(equalToConstant: 15),
+                cap.widthAnchor.constraint(greaterThanOrEqualToConstant: 17),
             ])
             view.orientation = .horizontal
-            view.spacing = 5
+            view.spacing = 4
             view.addArrangedSubview(cap)
             view.addArrangedSubview(label)
         }
@@ -345,13 +345,13 @@ final class KeyHintBar: NSView {
         super.init(frame: .zero)
         let leading = NSStackView(views: slots.map(\.view))
         leading.orientation = .horizontal
-        leading.spacing = 14
+        leading.spacing = 12
         trailingSlot.set(trailing)
         for v in [leading, trailingSlot.view] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             addSubview(v)
         }
-        let inset = Theme.selectionInset + 10
+        let inset = Theme.contentInset
         NSLayoutConstraint.activate([
             leading.leadingAnchor.constraint(equalTo: leadingAnchor, constant: inset),
             leading.centerYAnchor.constraint(equalTo: centerYAnchor),

@@ -7,16 +7,16 @@ import QuickbarCore
 /// results come back to the main thread and are dropped if a newer keystroke
 /// has happened since. The main thread never waits on anything.
 final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSource, NSTableViewDelegate, NSWindowDelegate {
-    static let width: CGFloat = 680
-    static let barHeight: CGFloat = 58
-    static let rowHeight: CGFloat = 48
-    static let maxVisibleRows = 8
-    static let listPadding: CGFloat = 6
+    static let width: CGFloat = 600
+    static let barHeight: CGFloat = 38
+    static let rowHeight: CGFloat = 24
+    static let maxVisibleRows = 12
+    static let listPadding: CGFloat = 4
 
     let panel = FloatingPanel(size: NSSize(width: LauncherController.width, height: LauncherController.barHeight))
     private let field = NSTextField()
     private let chip = NSTextField(labelWithString: "")
-    private let chipPill = TintedBox(fill: NSColor.labelColor.withAlphaComponent(0.09), radius: 7)
+    private let chipPill = TintedBox(fill: NSColor.labelColor.withAlphaComponent(0.09), radius: 5)
     private let modeIcon = NSImageView()
     private let separator = NSBox()
     private let footerSeparator = NSBox()
@@ -62,7 +62,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
     }
 
     private func setModeIcon(_ name: String) {
-        let config = NSImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
         modeIcon.image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config)
     }
 
@@ -105,7 +105,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         modeIcon.setContentHuggingPriority(.required, for: .horizontal)
         setModeIcon("magnifyingglass")
 
-        chip.font = .systemFont(ofSize: 13, weight: .medium)
+        chip.font = .systemFont(ofSize: 11.5, weight: .medium)
         chip.textColor = .secondaryLabelColor
         chip.lineBreakMode = .byTruncatingHead
         chip.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -117,7 +117,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.font = .systemFont(ofSize: 22, weight: .regular)
+        field.font = .systemFont(ofSize: 17, weight: .regular)
         field.placeholderString = Self.rootPlaceholder
         field.delegate = self
         field.cell?.usesSingleLineMode = true
@@ -127,8 +127,8 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         let bar = NSStackView(views: [modeIcon, chipPill, field])
         bar.orientation = .horizontal
         bar.alignment = .centerY
-        bar.spacing = 10
-        bar.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 0, right: 18)
+        bar.spacing = 7
+        bar.edgeInsets = NSEdgeInsets(top: 0, left: Theme.contentInset + 1, bottom: 0, right: Theme.contentInset)
 
         separator.boxType = .separator
         separator.isHidden = true
@@ -156,10 +156,10 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
             bar.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             bar.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             bar.heightAnchor.constraint(equalToConstant: Self.barHeight),
-            chip.leadingAnchor.constraint(equalTo: chipPill.leadingAnchor, constant: 8),
-            chip.trailingAnchor.constraint(equalTo: chipPill.trailingAnchor, constant: -8),
-            chip.topAnchor.constraint(equalTo: chipPill.topAnchor, constant: 4),
-            chip.bottomAnchor.constraint(equalTo: chipPill.bottomAnchor, constant: -4),
+            chip.leadingAnchor.constraint(equalTo: chipPill.leadingAnchor, constant: 6),
+            chip.trailingAnchor.constraint(equalTo: chipPill.trailingAnchor, constant: -6),
+            chip.topAnchor.constraint(equalTo: chipPill.topAnchor, constant: 2),
+            chip.bottomAnchor.constraint(equalTo: chipPill.bottomAnchor, constant: -2),
             chip.widthAnchor.constraint(lessThanOrEqualToConstant: 260),
             separator.topAnchor.constraint(equalTo: bar.bottomAnchor),
             separator.leadingAnchor.constraint(equalTo: content.leadingAnchor),

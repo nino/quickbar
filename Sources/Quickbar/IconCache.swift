@@ -4,7 +4,7 @@ import QuickbarCore
 /// Icons are fetched and rasterized off the main thread, then cached.
 final class IconCache {
     static let shared = IconCache()
-    static let pointSize: CGFloat = 32
+    static let pointSize: CGFloat = 18
 
     private let cache = NSCache<NSString, NSImage>()
     private let queue = DispatchQueue(label: "quickbar.icons", qos: .userInitiated, attributes: .concurrent)
@@ -44,7 +44,7 @@ final class IconCache {
         case .action: name = "gearshape"
         default: name = "doc"
         }
-        let config = NSImage.SymbolConfiguration(pointSize: 17, weight: .medium)
+        let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
         let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config)
         image?.isTemplate = true
         symbols[kind] = image

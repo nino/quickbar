@@ -297,10 +297,10 @@ final class ClipboardStore {
 /// the modifier puts the selected entry on the clipboard.
 final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSWindowDelegate {
     static let width: CGFloat = 560
-    static let rowHeight: CGFloat = 30
-    static let maxVisibleRows = 12
-    static let previewHeight: CGFloat = 132
-    static let headerHeight: CGFloat = 34
+    static let rowHeight: CGFloat = 22
+    static let maxVisibleRows = 14
+    static let previewHeight: CGFloat = 116
+    static let headerHeight: CGFloat = 26
 
     private let panel = FloatingPanel(size: NSSize(width: ClipboardPanelController.width, height: 200))
     private let table: ResultsTableView
@@ -336,9 +336,9 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
         table.doubleAction = #selector(rowDoubleClicked)
 
         for box in [separator, headerSeparator, footerSeparator] { box.boxType = .separator }
-        header.font = .systemFont(ofSize: 12, weight: .semibold)
+        header.font = .systemFont(ofSize: 11, weight: .semibold)
         header.textColor = .secondaryLabelColor
-        counter.font = .monospacedDigitSystemFont(ofSize: 11.5, weight: .regular)
+        counter.font = .monospacedDigitSystemFont(ofSize: 10.5, weight: .regular)
         counter.textColor = .tertiaryLabelColor
         preview.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         preview.textColor = .secondaryLabelColor
@@ -354,7 +354,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
             v.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(v)
         }
-        let inset = Theme.selectionInset + 10
+        let inset = Theme.contentInset
         previewLeading = preview.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: inset)
         NSLayoutConstraint.activate([
             header.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: inset),
@@ -364,21 +364,21 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
             headerSeparator.topAnchor.constraint(equalTo: content.topAnchor, constant: Self.headerHeight),
             headerSeparator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             headerSeparator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            scroll.topAnchor.constraint(equalTo: headerSeparator.bottomAnchor, constant: 6),
+            scroll.topAnchor.constraint(equalTo: headerSeparator.bottomAnchor, constant: 4),
             scroll.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: separator.topAnchor, constant: -6),
+            scroll.bottomAnchor.constraint(equalTo: separator.topAnchor, constant: -4),
             separator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             separator.bottomAnchor.constraint(equalTo: footerSeparator.topAnchor, constant: -Self.previewHeight),
-            preview.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 10),
+            preview.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 8),
             previewLeading,
             preview.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -inset),
             preview.bottomAnchor.constraint(lessThanOrEqualTo: footerSeparator.topAnchor, constant: -8),
-            previewImage.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 10),
+            previewImage.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 8),
             previewImage.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: inset),
             previewImage.widthAnchor.constraint(equalToConstant: 180),
-            previewImage.bottomAnchor.constraint(equalTo: footerSeparator.topAnchor, constant: -10),
+            previewImage.bottomAnchor.constraint(equalTo: footerSeparator.topAnchor, constant: -8),
             footerSeparator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             footerSeparator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             footerSeparator.bottomAnchor.constraint(equalTo: hints.topAnchor),
@@ -447,7 +447,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
         // Entry 0 is what is already on the clipboard, so callers start at the one before it.
         select(row)
         let rows = CGFloat(min(entries.count, Self.maxVisibleRows))
-        panel.position(height: Self.headerHeight + 1 + rows * Self.rowHeight + 12 + 1 + Self.previewHeight + 1 + Theme.footerHeight)
+        panel.position(height: Self.headerHeight + 1 + rows * Self.rowHeight + 8 + 1 + Self.previewHeight + 1 + Theme.footerHeight)
     }
 
     /// Renders the panel with made-up entries, for snapshots.
@@ -457,7 +457,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
         if let thumbnail {
             previewImage.image = thumbnail
             previewImage.isHidden = false
-            previewLeading.constant = Theme.selectionInset + 10 + 180 + 14
+            previewLeading.constant = Theme.contentInset + 180 + 14
         }
         hints.set(Self.heldHints("⌘"))
         return panel
@@ -505,7 +505,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
         switch entry.kind {
         case .text:
             previewImage.isHidden = true
-            previewLeading.constant = Theme.selectionInset + 10
+            previewLeading.constant = Theme.contentInset
             preview.stringValue = String(entry.text.prefix(2000))
             return
         case .image:
@@ -516,7 +516,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
             preview.stringValue = entry.files.prefix(6).map(PathDisplay.abbreviate).joined(separator: "\n")
         }
         previewImage.isHidden = false
-        previewLeading.constant = Theme.selectionInset + 10 + 180 + 14
+        previewLeading.constant = Theme.contentInset + 180 + 14
         let scale = panel.screen?.backingScaleFactor ?? 2
         ClipboardStore.shared.thumbnail(for: entry, maxPixels: 180 * scale) { [weak self] image in
             guard let self, self.previewedID == entry.id else { return }
@@ -526,7 +526,7 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
                 self.previewImage.image = image
             } else {
                 self.previewImage.isHidden = true
-                self.previewLeading.constant = Theme.selectionInset + 10
+                self.previewLeading.constant = Theme.contentInset
             }
         }
     }
@@ -626,7 +626,7 @@ final class ClipboardCell: NSTableCellView {
     let age = NSTextField(labelWithString: "")
     private let icon = NSImageView()
     private static let symbols: [ClipboardEntry.Kind: NSImage] = {
-        let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+        let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
         let names: [ClipboardEntry.Kind: String] = [.text: "text.alignleft", .image: "photo", .files: "doc.on.doc"]
         return names.compactMapValues { NSImage(systemSymbolName: $0, accessibilityDescription: nil)?.withSymbolConfiguration(config) }
     }()
@@ -634,10 +634,10 @@ final class ClipboardCell: NSTableCellView {
     init(identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
-        label.font = .systemFont(ofSize: 13)
+        label.font = .systemFont(ofSize: 12.5)
         label.lineBreakMode = .byTruncatingTail
         label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        age.font = .monospacedDigitSystemFont(ofSize: 11.5, weight: .regular)
+        age.font = .monospacedDigitSystemFont(ofSize: 10.5, weight: .regular)
         age.alignment = .right
         age.setContentHuggingPriority(.required, for: .horizontal)
         age.setContentCompressionResistancePriority(.required, for: .horizontal)
@@ -646,12 +646,12 @@ final class ClipboardCell: NSTableCellView {
             v.translatesAutoresizingMaskIntoConstraints = false
             addSubview(v)
         }
-        let inset = Theme.selectionInset + 10
+        let inset = Theme.contentInset
         NSLayoutConstraint.activate([
             icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: inset),
             icon.centerYAnchor.constraint(equalTo: centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 18),
-            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 8),
+            icon.widthAnchor.constraint(equalToConstant: 16),
+            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 6),
             label.trailingAnchor.constraint(lessThanOrEqualTo: age.leadingAnchor, constant: -12),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
             age.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -inset),
