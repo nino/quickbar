@@ -30,6 +30,7 @@ final class IndexManager {
         Item(id: "action:config", title: "Reveal Quickbar Config File", subtitle: "Show config.json in Finder", kind: .action, payload: "config"),
         Item(id: "action:clipboard", title: "Clipboard History", subtitle: "Show everything you copied", kind: .action, payload: "clipboard"),
         Item(id: "action:clear-clipboard", title: "Clear Clipboard History", subtitle: "Forget everything you copied", kind: .action, payload: "clear-clipboard"),
+        Item(id: "action:dark-mode", title: "Toggle Dark Mode", subtitle: "Switch the system between light and dark", kind: .action, payload: "dark-mode"),
         Item(id: "action:quit", title: "Quit Quickbar", kind: .action, payload: "quit"),
     ]
 

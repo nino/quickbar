@@ -109,8 +109,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "config": NSWorkspace.shared.activateFileViewerSelecting([AppPaths.config])
         case "clipboard": clipboardPanel.hotKeyPressed(reverse: false, modifiers: [])
         case "clear-clipboard": ClipboardStore.shared.clear()
+        case "dark-mode": Self.toggleDarkMode()
         case "quit": NSApp.terminate(nil)
         default: Log.info("unknown action \(action)")
+        }
+    }
+
+    /// System Events is the supported way to flip the system appearance. The
+    /// Apple Event can take a while (and the first one waits on a permission
+    /// prompt), so it never runs on the main thread.
+    private static func toggleDarkMode() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let source = "tell application \"System Events\" to tell appearance preferences to set dark mode to not dark mode"
+            var error: NSDictionary?
+            NSAppleScript(source: source)?.executeAndReturnError(&error)
+            if let error {
+                Log.info("toggle dark mode failed: \(error[NSAppleScript.errorMessage] ?? error)")
+            } else {
+                Log.info("toggled dark mode")
+            }
         }
     }
 

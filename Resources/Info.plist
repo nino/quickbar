@@ -26,6 +26,8 @@
 	<true/>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Quickbar uses System Events to switch between light and dark mode when you run Toggle Dark Mode.</string>
 	<key>NSDesktopFolderUsageDescription</key>
 	<string>Quickbar indexes the folders you choose so you can open their contents.</string>
 	<key>NSDocumentsFolderUsageDescription</key>
