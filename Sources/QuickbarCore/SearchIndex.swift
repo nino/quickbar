@@ -58,7 +58,7 @@ public final class SearchIndex: Sendable {
         switch kind {
         case .app: return 6
         case .searchTemplate: return 4
-        case .folder, .action, .setting: return 2
+        case .folder, .action, .setting, .snippet: return 2
         default: return 0
         }
     }

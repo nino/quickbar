@@ -111,6 +111,7 @@ public struct Config: Codable, Equatable, Sendable {
     /// Template offered as "Search … for <typed text>" at the bottom of results.
     public var defaultSearchTemplate: String = "kagi"
     public var abbreviations: [CustomAbbreviation] = []
+    public var snippets: [Snippet] = []
     public var clipboardMaxEntries: Int = 100
     public var clipboardPersist: Bool = true
     public var maxResults: Int = 50
@@ -132,6 +133,7 @@ public struct Config: Codable, Equatable, Sendable {
         searchTemplates = get(.searchTemplates, d.searchTemplates)
         defaultSearchTemplate = get(.defaultSearchTemplate, d.defaultSearchTemplate)
         abbreviations = get(.abbreviations, d.abbreviations)
+        snippets = get(.snippets, d.snippets)
         clipboardMaxEntries = get(.clipboardMaxEntries, d.clipboardMaxEntries)
         clipboardPersist = get(.clipboardPersist, d.clipboardPersist)
         maxResults = get(.maxResults, d.maxResults)
