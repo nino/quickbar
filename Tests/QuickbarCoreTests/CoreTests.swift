@@ -186,9 +186,63 @@ private func app(_ name: String) -> Item {
             == "https://kagi.com/search?q=c%2B%2B%20%26%20rust%3F")
     }
 
+    @Test func snippetsRoundTripAndTolerateMissingKeys() {
+        var c = Config()
+        c.snippets = [Snippet(id: "a", title: "Address", text: "1 Main St\nSpringfield")]
+        #expect(Config.decode(c.encoded()) == c)
+
+        let bare = Config.decode(Data(#"{"snippets": [{"text": "hello"}]}"#.utf8))!
+        #expect(bare.snippets.map(\.text) == ["hello"])
+        #expect(bare.snippets[0].title.isEmpty)
+        // No id in the file: the same text must get the same id on every load.
+        let again = Config.decode(Data(#"{"snippets": [{"text": "hello"}]}"#.utf8))!
+        #expect(bare.snippets[0].id == again.snippets[0].id)
+    }
+
     @Test func hotKeyDisplay() {
         #expect(Config().hotKey.displayString == "⌥Space")
         #expect(Config().clipboardHotKey.displayString == "⌘\\")
+    }
+}
+
+@Suite struct SnippetTests {
+    @Test func titleWinsOverText() {
+        let s = Snippet(id: "a", title: "  Address ", text: "1 Main St\nSpringfield")
+        #expect(s.displayTitle == "Address")
+        #expect(s.item?.title == "Address")
+        #expect(s.item?.subtitle == "1 Main St Springfield")
+    }
+
+    @Test func untitledShowsTruncatedText() {
+        let short = Snippet(id: "a", text: "  Kind regards,\n\n\tAda  ")
+        #expect(short.displayTitle == "Kind regards, Ada")
+        #expect(short.item?.subtitle == "")
+
+        let long = Snippet(id: "b", text: String(repeating: "word ", count: 40))
+        #expect(long.displayTitle.count <= Snippet.titleLength + 1)
+        #expect(long.displayTitle.hasSuffix("d…"))
+    }
+
+    @Test func itemCarriesTheWholeText() {
+        let text = String(repeating: "line\n", count: 50)
+        let item = Snippet(id: "x", text: text).item
+        #expect(item?.id == "snippet:x")
+        #expect(item?.kind == .snippet)
+        #expect(item?.payload == text)
+    }
+
+    @Test func emptySnippetsAreNotIndexed() {
+        #expect(Snippet(id: "a", title: "Later", text: "").item == nil)
+        #expect(Snippet(id: "b", text: " \n ").item == nil)
+    }
+
+    @Test func foundByTitleOrByText() {
+        let index = SearchIndex(items: [
+            Snippet(id: "a", title: "Address", text: "1 Main St").item,
+            Snippet(id: "b", text: "Kind regards, Ada").item,
+        ].compactMap { $0 })
+        #expect(index.search("addr").first?.item.id == "snippet:a")
+        #expect(index.search("kr").first?.item.id == "snippet:b")
     }
 }
 

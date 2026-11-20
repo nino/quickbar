@@ -17,6 +17,8 @@ public enum ItemKind: String, Codable, Sendable {
     case setting
     /// Built-in command; `payload` is the action name.
     case action
+    /// A saved piece of text; `payload` is the text to paste, type or copy.
+    case snippet
 }
 
 /// One row the launcher can show and act on.
