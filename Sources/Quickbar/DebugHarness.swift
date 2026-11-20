@@ -10,8 +10,9 @@ import QuickbarCore
 /// Steps: `type:<text>`, `key:<up|down|left|right|tab|return|backspace>`, `wait:<seconds>`.
 /// `--dump` prints the rows; `--snapshot` renders the panel to a PNG
 /// (`--dark` in dark mode, `--clipboard` the clipboard panel with sample entries,
-/// `--settings <0-3>` a pane of the Settings window; `--no-files` indexes no
-/// folders, for snapshots that will be published).
+/// `--settings <0-4>` a pane of the Settings window; `--no-files` indexes no
+/// folders and `--snippets` replaces the snippets with samples, for snapshots
+/// that will be published). ↩ on a snippet prints what it would insert.
 /// In this mode no hotkeys are registered and the clipboard is not watched.
 enum DebugHarness {
     private static let args = Array(CommandLine.arguments.dropFirst())
@@ -27,9 +28,16 @@ enum DebugHarness {
     /// `--no-files` leaves the indexed folders out, so snapshots meant for
     /// other people show no personal file names.
     static func indexConfig(_ config: Config) -> Config {
-        guard isActive, args.contains("--no-files") else { return config }
+        guard isActive else { return config }
         var copy = config
-        copy.folders = []
+        if args.contains("--no-files") { copy.folders = [] }
+        // `--snippets` swaps in sample snippets, for the same reason.
+        if args.contains("--snippets") {
+            copy.snippets = [
+                Snippet(id: "sample-address", title: "Office Address", text: "1 Example Street\n12345 Springfield"),
+                Snippet(id: "sample-reply", text: "Thanks for getting in touch. I will reply within two working days."),
+            ]
+        }
         return copy
     }
 

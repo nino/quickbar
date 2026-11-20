@@ -27,6 +27,7 @@ final class SettingsWindowController {
         add("Index", "folder", height: 540, FoldersTab())
         add("Abbreviations", "character.cursor.ibeam", height: 460, AbbreviationsTab())
         add("Search", "magnifyingglass", height: 460, SearchTab())
+        add("Snippets", "text.quote", height: 520, SnippetsTab())
 
         let w = NSWindow(contentViewController: tabs)
         w.title = "General"
@@ -422,5 +423,132 @@ private struct SearchTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+// MARK: - Snippets
+
+private struct SnippetsTab: View {
+    @EnvironmentObject var store: ConfigStore
+    @State private var selection: String?
+
+    private var selected: Snippet? {
+        store.config.snippets.first { $0.id == selection }
+    }
+
+    /// Looks the snippet up by id on every access: a binding into the array by
+    /// position would crash when the selected snippet is removed.
+    private func binding(_ id: String, _ field: WritableKeyPath<Snippet, String>) -> Binding<String> {
+        Binding(
+            get: { store.config.snippets.first { $0.id == id }?[keyPath: field] ?? "" },
+            set: { value in
+                guard let i = store.config.snippets.firstIndex(where: { $0.id == id }) else { return }
+                store.config.snippets[i][keyPath: field] = value
+            })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            List(selection: $selection) {
+                ForEach(store.config.snippets) { snippet in
+                    HStack(spacing: 8) {
+                        Text(snippet.displayTitle.isEmpty ? "Empty snippet" : snippet.displayTitle)
+                            .foregroundStyle(snippet.displayTitle.isEmpty ? Color.secondary : Color.primary)
+                            .lineLimit(1)
+                        if snippet.hasTitle {
+                            Text(Snippet.preview(snippet.text, length: Snippet.previewLength))
+                                .foregroundStyle(Color.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .tag(snippet.id)
+                }
+                .onMove { store.config.snippets.move(fromOffsets: $0, toOffset: $1) }
+            }
+            .listStyle(.bordered)
+            .frame(height: 170)
+
+            HStack(spacing: 8) {
+                Button { add() } label: { Image(systemName: "plus") }
+                Button { removeSelected() } label: { Image(systemName: "minus") }
+                    .disabled(selected == nil)
+                Spacer()
+            }
+
+            if let snippet = selected {
+                TextField("Title", text: binding(snippet.id, \.title), prompt: Text("Title (optional)"))
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                PlainTextEditor(text: binding(snippet.id, \.text))
+                    // A fresh editor per snippet, so undo never crosses into another one.
+                    .id(snippet.id)
+            } else {
+                Text(store.config.snippets.isEmpty ? "No snippets yet. Add one with +." : "Select a snippet to edit it.")
+                    .foregroundStyle(Color.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+
+            Text("In the bar, ↩ pastes the selected snippet, ⌘↩ types it key by key (for fields that block pasting) and ⌘C copies it. Pasting and typing need Quickbar to be allowed under Privacy & Security › Accessibility.")
+                .font(.footnote)
+                .foregroundStyle(Color.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(20)
+    }
+
+    private func add() {
+        let snippet = Snippet(text: "")
+        store.config.snippets.append(snippet)
+        selection = snippet.id
+    }
+
+    private func removeSelected() {
+        guard let id = selection else { return }
+        selection = nil
+        store.config.snippets.removeAll { $0.id == id }
+        store.config.abbreviations.removeAll { $0.target == Snippet.itemID(id) }
+    }
+}
+
+/// A plain multi-line text box. SwiftUI's TextEditor applies the system's
+/// smart quotes and dashes, which would alter commands and code kept as snippets.
+private struct PlainTextEditor: NSViewRepresentable {
+    @Binding var text: String
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSTextView.scrollableTextView()
+        scroll.borderType = .bezelBorder
+        guard let view = scroll.documentView as? NSTextView else { return scroll }
+        view.delegate = context.coordinator
+        view.font = .systemFont(ofSize: NSFont.systemFontSize)
+        view.isRichText = false
+        view.allowsUndo = true
+        view.isAutomaticQuoteSubstitutionEnabled = false
+        view.isAutomaticDashSubstitutionEnabled = false
+        view.isAutomaticTextReplacementEnabled = false
+        view.isAutomaticSpellingCorrectionEnabled = false
+        view.textContainerInset = NSSize(width: 2, height: 5)
+        view.string = text
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        context.coordinator.parent = self
+        // Setting the string moves the cursor to the end, so only when it differs.
+        guard let view = scroll.documentView as? NSTextView, view.string != text else { return }
+        view.string = text
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: PlainTextEditor
+
+        init(_ parent: PlainTextEditor) { self.parent = parent }
+
+        func textDidChange(_ notification: Notification) {
+            guard let view = notification.object as? NSTextView else { return }
+            parent.text = view.string
+        }
     }
 }

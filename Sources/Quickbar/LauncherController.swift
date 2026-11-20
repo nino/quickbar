@@ -88,6 +88,8 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
             list = [Hint(key: "↩", label: "Run")]
         case .setting:
             list = [Hint(key: "↩", label: "Open in System Settings")]
+        case .snippet:
+            list = [Hint(key: "↩", label: "Paste"), Hint(key: "⌘↩", label: "Type"), Hint(key: "⌘C", label: "Copy")]
         }
         let text = field.stringValue
         if mode == .root, !text.isEmpty, !QueryEngine.isSticky(text), item.kind != .searchTemplate {
@@ -425,6 +427,13 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
             hide()
             actionHandler?("settings")
             return true
+        case 8: // C
+            // Only on a snippet; otherwise ⌘C copies from the text field as usual.
+            guard let item = selectedItem, item.kind == .snippet, let text = item.payload else { return false }
+            learn(item, query: field.stringValue.trimmingCharacters(in: .whitespaces))
+            hide()
+            TextInserter.copy(text)
+            return true
         default:
             return false
         }
@@ -522,12 +531,7 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
         case .app, .file, .folder:
             guard let path = item.path else { return }
             learn(item, query: query)
-            if pin, mode == .root, !query.isEmpty, !QueryEngine.isSticky(query) {
-                var updated = config
-                updated.abbreviations.removeAll { Fuzzy.normalize($0.abbreviation) == Fuzzy.normalize(query) }
-                updated.abbreviations.append(CustomAbbreviation(abbreviation: Fuzzy.normalize(query), target: item.id))
-                ConfigStore.shared.config = updated
-            }
+            if pin { self.pin(item, to: query) }
             hide()
             let url = URL(fileURLWithPath: path)
             if reveal {
@@ -566,7 +570,25 @@ final class LauncherController: NSObject, NSTextFieldDelegate, NSTableViewDataSo
             learn(item, query: query)
             hide()
             Opener.open(url)
+
+        case .snippet:
+            guard let text = item.payload else { return }
+            learn(item, query: query)
+            if pin { self.pin(item, to: query) }
+            // Hide first: the keys must go to the app behind the bar.
+            hide()
+            // ⌘↩ types instead, for fields that block pasting.
+            if reveal { TextInserter.typeOut(text) } else { TextInserter.paste(text) }
         }
+    }
+
+    /// Makes `item` the permanent target of the typed abbreviation.
+    private func pin(_ item: Item, to query: String) {
+        guard mode == .root, !query.isEmpty, !QueryEngine.isSticky(query) else { return }
+        var updated = ConfigStore.shared.config
+        updated.abbreviations.removeAll { Fuzzy.normalize($0.abbreviation) == Fuzzy.normalize(query) }
+        updated.abbreviations.append(CustomAbbreviation(abbreviation: Fuzzy.normalize(query), target: item.id))
+        ConfigStore.shared.config = updated
     }
 
     // MARK: - Table

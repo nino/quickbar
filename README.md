@@ -30,7 +30,7 @@ if you are not an admin) and starts it. Turn on
 | Key | What it does |
 |-----|--------------|
 | ⌥Space | Show / hide the bar (change in Settings) |
-| type | Abbreviation search over apps, files, folders, System Settings panes, search templates |
+| type | Abbreviation search over apps, files, folders, System Settings panes, search templates, snippets |
 | ↑ ↓ | Move through results |
 | ↩ | Open the selected item |
 | ⌘↩ | Reveal it in Finder |
@@ -52,6 +52,11 @@ if you are not an admin) and starts it. Turn on
 - **Math.** `2+2`, `sqrt(2)*10`, `15% * 80`, `2^10`, `0xff + 1`. ↩ copies the result.
 - **URLs.** Type or paste one; ↩ opens it.
 - **Paths.** Start with `/` or `~` to walk the file system from anywhere.
+- **Snippets.** Pieces of text you add in Settings, found by their title or,
+  without one, by the start of their text. ↩ pastes the selected snippet into
+  the app you were in, ⌘↩ types it key by key (for fields that block pasting),
+  ⌘C copies it. Pasting and typing need the Accessibility permission; macOS
+  asks the first time. A pasted snippet stays on the clipboard.
 - **Kagi.** `kagi`, Space, then type: suggestions appear as you type. Anything
   with no better match also offers "Search Kagi for …". Suggestions are only
   requested while you are typing a search, never for ordinary abbreviations.
@@ -70,7 +75,7 @@ by password managers are skipped.
 ## Configuration
 
 Settings covers hotkeys, the retype delay, indexed folders and their depth,
-abbreviations and search templates. Everything is stored in
+abbreviations, search templates and snippets. Everything is stored in
 `~/Library/Application Support/Quickbar/config.json`, which can also be edited
 by hand; run "Reload Quickbar Config" from the bar afterwards.
 

@@ -14,6 +14,8 @@ final class IndexManager {
     private var config = Config()
     private var watched: [(path: String, depth: Int)] = []
     private var rebuildPending = false
+    /// What the last full scan found, without the snippets. Queue-confined.
+    private var scanned: [Item]?
 
     /// Called on the main thread after each rebuild.
     var onUpdate: (() -> Void)?
@@ -24,7 +26,7 @@ final class IndexManager {
     }
 
     static let actions: [Item] = [
-        Item(id: "action:settings", title: "Quickbar Settings", subtitle: "Hotkeys, folders, abbreviations", kind: .action, payload: "settings"),
+        Item(id: "action:settings", title: "Quickbar Settings", subtitle: "Hotkeys, folders, abbreviations, snippets", kind: .action, payload: "settings"),
         Item(id: "action:rescan", title: "Rescan Quickbar Index", subtitle: "Re-read applications and folders", kind: .action, payload: "rescan"),
         Item(id: "action:reload", title: "Reload Quickbar Config", subtitle: "Re-read config.json after editing it by hand", kind: .action, payload: "reload"),
         Item(id: "action:config", title: "Reveal Quickbar Config File", subtitle: "Show config.json in Finder", kind: .action, payload: "config"),
@@ -60,6 +62,17 @@ final class IndexManager {
         queue.async { self.rebuildNow() }
     }
 
+    /// Swaps the snippets in the index without scanning anything again:
+    /// they change on every keystroke in Settings.
+    func updateSnippets(_ snippets: [Snippet]) {
+        queue.async {
+            self.config.snippets = snippets
+            // No scan has finished yet: the one that does will include them.
+            guard let scanned = self.scanned else { return }
+            self.publish(scanned + snippets.compactMap(\.item))
+        }
+    }
+
     private func publish(_ items: [Item]) {
         let built = SearchIndex(items: items)
         lock.lock()
@@ -73,11 +86,14 @@ final class IndexManager {
         var items = Self.baseItems(config: config)
         // On the first build, make applications searchable right away: scanning
         // a protected folder can sit behind a permission prompt for minutes.
-        if index.items.isEmpty { publish(items) }
+        let snippets = config.snippets.compactMap(\.item)
+        if index.items.isEmpty { publish(items + snippets) }
         let excluded = Set(config.excludedNames)
         for folder in config.folders {
             items.append(contentsOf: FileScanner.scanFolder(root: folder.path, depth: folder.depth, excluding: excluded))
         }
+        scanned = items
+        items.append(contentsOf: snippets)
         publish(items)
         let ms = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1e6
         Log.info("indexed \(items.count) items in \(String(format: "%.0f", ms)) ms")
