@@ -222,6 +222,7 @@ final class ResultCell: NSTableCellView {
         case .calculation: return "Result"
         case .action: return "Command"
         case .setting: return "Settings"
+        case .snippet: return "Snippet"
         }
     }
 

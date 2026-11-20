@@ -49,7 +49,7 @@ final class QueryEngine {
         guard !needle.isEmpty else { return [] }
         return rows.map { item in
             switch item.kind {
-            case .app, .folder, .file, .searchTemplate, .action, .setting:
+            case .app, .folder, .file, .searchTemplate, .action, .setting, .snippet:
                 return Fuzzy.matchRanges(query: needle, title: item.title)
             case .webSearch, .url, .calculation:
                 // These titles are made from the typed text, not matched against it.

@@ -42,6 +42,7 @@ final class IconCache {
         case .url: name = "globe"
         case .calculation: name = "equal.square"
         case .action: name = "gearshape"
+        case .snippet: name = "text.quote"
         default: name = "doc"
         }
         let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)

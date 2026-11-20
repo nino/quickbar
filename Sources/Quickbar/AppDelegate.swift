@@ -7,6 +7,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var launcher: LauncherController!
     private(set) var clipboardPanel: ClipboardPanelController!
 
+    private let snippetIndexer = Debouncer(delay: 0.3)
+
     private enum HotKeyID {
         static let launcher: UInt32 = 1
         static let clipboard: UInt32 = 2
@@ -43,6 +45,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if old.folders != new.folders || old.applicationFolders != new.applicationFolders
                 || old.excludedNames != new.excludedNames || old.searchTemplates != new.searchTemplates {
                 IndexManager.shared.configure(new)
+            }
+            if old.snippets != new.snippets {
+                self?.snippetIndexer.call { IndexManager.shared.updateSnippets(ConfigStore.shared.config.snippets) }
             }
             if old.clipboardMaxEntries != new.clipboardMaxEntries || old.clipboardPersist != new.clipboardPersist {
                 ClipboardStore.shared.apply(config: new)

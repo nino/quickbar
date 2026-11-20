@@ -22,7 +22,7 @@ froze. Every change is judged against this first.
 ## Layout
 
 - `Sources/QuickbarCore` — pure logic, no AppKit, unit tested. Matching, index,
-  learning, calculator, URL detection, config, scanning, clipboard model.
+  learning, calculator, URL detection, config, scanning, clipboard model, snippets.
 - `Sources/Quickbar` — the app. `LauncherController` is the state machine
   (root / browse folder / search text). `QueryEngine` turns (mode, text) into
   rows on the search queue.
@@ -31,6 +31,8 @@ froze. Every change is judged against this first.
   compiled by `python3 scripts/make-icon.py` into `Assets.car` (Liquid Glass)
   and `AppIcon.icns` (fallback). Needs Xcode's `actool` only for redrawing;
   the compiled files are checked in. Preview renditions with Icon Composer's `ictool`.
+- `TextInserter` posts synthetic keys (⌘V, or the text key by key) for
+  snippets. It needs the Accessibility permission and runs on its own queue.
 - Shared look (`Theme`, `TintedBox`, `KeyHintBar`) lives in `PanelViews.swift`.
   The footer hints must stay true to what the keys do for the selected row.
 - `PLAN.md` — stages and ideas not yet built.
@@ -66,14 +68,16 @@ $B --script type:kagi "type:kagi " "type:swift conc" wait:1.5 --dump
 Steps: `type:<text>` sets the field as if typed; `key:<up|down|left|right|tab|return|backspace>`;
 `wait:<seconds>`. The blur behind the panel is not captured in snapshots.
 Add `--dark` to render in dark mode, `--clipboard` to snapshot the clipboard
-panel with sample entries, and `--settings <0-3>` to snapshot a Settings pane
+panel with sample entries, and `--settings <0-4>` to snapshot a Settings pane
 (it renders grey because the window is never shown or made key).
 `--no-files` indexes no folders: use it for anything that will be published
-(the README images in `docs/screenshots/`), so no personal file names appear. Look at both appearances after any visual change.
+(the README images in `docs/screenshots/`), so no personal file names appear.
+`--snippets` replaces the snippets with two samples, for the same reason.
+In the harness, ↩ on a snippet prints what it would insert and posts no keys. Look at both appearances after any visual change.
 
 What the harness cannot check: global hotkeys, focus, the retype timer's
-select-all, the clipboard panel's modifier-release commit, and what the
-Settings controls do when used. Check those in the running app.
+select-all, the clipboard panel's modifier-release commit, snippets arriving
+in another app (paste and typing), and what the Settings controls do when used. Check those in the running app.
 
 ## Logs
 
@@ -92,6 +96,6 @@ log, the pasteboard and the files in Application Support. Do not use
 - Config fields must have defaults and be read with `decodeIfPresent`
   (`Config.init(from:)`), so old config files keep loading.
 - Item ids are stable strings: file paths for file-system items, `template:<id>`,
-  `action:<name>`, `settings:<bundle id>`. Learning and custom abbreviations key on them.
+  `action:<name>`, `settings:<bundle id>`, `snippet:<id>`. Learning and custom abbreviations key on them.
 - Comments say why, not what.
 - Commit in small stages with the tests passing.

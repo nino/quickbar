@@ -59,6 +59,16 @@ Not yet exercised by hand: the individual Settings controls, launch at login.
 | 8 | Settings window, launch at login | folders/hotkeys/abbreviations editable |
 | 9 | Verify in the running app, install | installed in /Applications and running |
 
+## Snippets (2026-11-20)
+
+Text snippets from Settings are in the index; ↩ pastes, ⌘↩ types, ⌘C copies.
+Written in a Linux container: the core tests ran there, the app target was
+not compiled. Still to do on the Mac: build, then check paste and typing into
+another app, the Accessibility prompt, and the Snippets pane in Settings.
+Known limits: ⌘V is posted by key code, so it assumes a layout with V in the
+QWERTY position; typing sends Return for line breaks, which submits in some
+chat fields.
+
 ## Later / ideas
 
 - Clipboard: paste-on-release
